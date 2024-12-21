@@ -1,0 +1,906 @@
+<!-- livebook:{"file_entries":[{"name":"2023-a8-national-estimates.csv","type":"attachment"},{"name":"2023-bep-results.csv","type":"attachment"},{"file":{"file_system_id":"local","file_system_type":"local","path":"/Users/elliot/code/notebooks/files/processed-results.json"},"name":"processed-results.json","type":"file"}]} -->
+
+# Process pupil attainment and progress
+
+```elixir
+app_root = Path.join(__DIR__, "..")
+
+Mix.install(
+  [
+    {:school_kit, path: app_root, env: :dev},
+  ],
+  # config_path: Path.join(app_root, "config/config.exs"),
+  lockfile: Path.join(app_root, "mix.lock")
+)
+```
+
+## Load in raw results data
+
+```elixir
+raw_results =
+  "/Users/elliot/code/school_kit/notebooks/files/2023-bep-results.csv"
+  |> File.stream!()
+  |> CSV.decode(headers: true)
+  |> Enum.map(fn {:ok, i} ->
+    i
+  end)
+```
+
+## Clean the input data
+
+The data we get in needs a bit of clean up and normalising before we can do any real work with it. In particular we need to:
+
+* Create a sensible map for each student record, making all the necessary data easily available to work with going forward.
+* Normalise all qualification grades over to the GCSE reformed system. This is the more tricky part, as different qualification types have different grading schemes. For example, BTEC's grade on a scale of L2D* (Level 2 distinction star) down to P1 (Level 1 pass). There is a particular mapping defined by the Department for Education so we can line these up to the academic GCSE's number system.
+* Split out any double awards (currently only Science Double Award) into two subject entries, this is to make Attainment and Progress calculations easy later on.
+
+The resulting student record is then represented as an elixir map, with atom keys. Each record has only the subjects the student actually sat, and their grade as a floating point number normalised to the GCSE Reformed spec.
+
+```elixir
+defmodule StudentRecordNormalisers do
+  def normalise_student_record(record) do
+    # TODO: Improve input column names
+    %{
+      name: record["Surname Forename"],
+      school: record["School"],
+      gender: normalise_gender(record["Gender  (M/F)"]),
+      pupil_premium: normalise_boolean(record["Pupil Premium  (Y/N)"]),
+      disadvantaged: normalise_boolean(record["Disadvantaged - 
+FSM / FSM6 / LAC (Y/N)"]),
+      SEND: normalise_SEND(record["SEND  (E / K / N)"]),
+      attendance_band: normalise_attendance_band(record["Attendance Band"]),
+      ks2: normalise_ks2_results(record["KS2 Reading Scaled Score"], record["KS2 Maths Scaled Score"])
+    }
+  end
+
+  defp normalise_gender(""), do: nil
+  defp normalise_gender("M"), do: :male
+  defp normalise_gender("F"), do: :female
+
+  defp normalise_boolean(""), do: nil
+  defp normalise_boolean("Y"), do: true
+  defp normalise_boolean("N"), do: false
+
+  defp normalise_SEND(""), do: nil
+  defp normalise_SEND("E"), do: :ehcp
+  defp normalise_SEND("K"), do: :arranged_support
+  defp normalise_SEND("N"), do: :none
+
+  defp normalise_attendance_band(band) do
+    Map.fetch!(%{
+        "" => "-50%",
+        "50%-" => "-50%",
+        "50-%" => "-50%",
+        "50-79%" => "50-79%",
+        "80-89%" => "80-89%",
+        "90-95%" => "90-95%",
+        "90-96%" => "90-95%",
+        "96%+" => "96%+"
+      }, band)
+  end
+  
+  defp normalise_ks2_results(reading_score, maths_score) when reading_score == "" or maths_score == "", do:
+    nil
+  defp normalise_ks2_results(reading_score, maths_score) when is_nil(reading_score) or is_nil(maths_score), do:
+    nil
+  defp normalise_ks2_results(reading_score, maths_score) do
+    reading_score_float = case Float.parse(reading_score) do
+      {float, _} -> float
+      :error -> nil
+    end
+    
+    maths_score_float = case Float.parse(maths_score) do
+      {float, _} -> float
+      :error -> nil
+    end
+
+    if reading_score_float != nil and maths_score_float != nil do
+      %{
+        reading_score: reading_score_float,
+        maths_score: maths_score_float,
+        average_score: (reading_score_float + maths_score_float) / 2.0
+      }
+    else
+      nil
+    end
+  end
+end
+
+defmodule GradeNormalisers do
+  def normalise_grade(subject, grade) do
+    subject_grade_mapper = Enum.find(subject_grade_mappers(), fn {subject_key, _subject_key_atom, _mapper} ->
+      subject_key == subject
+    end)
+    
+    case subject_grade_mapper do
+      {_subject, subject_key_atom, mapper} -> mapper.(subject_key_atom, grade)
+      _ -> :no_normaliser_found
+    end
+  end
+  
+  defp subject_grade_mappers() do
+    [
+      {"English Language", :english_language, &reformed_gcse_mapper/2},
+      {"English Literature", :english_literature, &reformed_gcse_mapper/2},
+      {"Maths", :maths, &reformed_gcse_mapper/2},
+      {"Science Sep - Biology", :science_biology, &reformed_gcse_mapper/2},
+      {"Science Sep - Chemistry", :science_chemistry, &reformed_gcse_mapper/2},
+      {"Science Sep - Physics", :science_physics, &reformed_gcse_mapper/2},
+      {"ICT - Computing", :ict_computing, &reformed_gcse_mapper/2},
+      {"Geography", :geography, &reformed_gcse_mapper/2},
+      {"History", :history, &reformed_gcse_mapper/2},
+      {"MFL - French", :mfl_french, &reformed_gcse_mapper/2},
+      {"MFL - German", :mfl_german, &reformed_gcse_mapper/2},
+      {"MFL - Spanish", :mfl_spanish, &reformed_gcse_mapper/2},
+      {"MFL - Chinese", :mfl_chinese, &reformed_gcse_mapper/2},
+      {"MFL - All Other", :mfl_other, &reformed_gcse_mapper/2},
+      {"Art", :art, &reformed_gcse_mapper/2},
+      {"Business Studies", :business_studies, &reformed_gcse_mapper/2},
+      {"Design & Technology", :design_and_technology, &reformed_gcse_mapper/2},
+      {"Drama", :drama, &reformed_gcse_mapper/2},
+      {"Food Preparation & Nutrition", :food_prep_and_nutrition, &reformed_gcse_mapper/2},
+      {"Media Studies", :media_studies, &reformed_gcse_mapper/2},
+      {"Music", :music, &reformed_gcse_mapper/2},
+      {"Photography", :photography, &reformed_gcse_mapper/2},
+      {"Physical Education", :physical_education, &reformed_gcse_mapper/2},
+      {"Religious Studies", :religious_studies, &reformed_gcse_mapper/2},
+      {"Textiles", :textiles, &reformed_gcse_mapper/2},
+      {"GCSE (Other)", :gcse_other, &reformed_gcse_mapper/2},
+      {"Open Subject - Ref'd GCSE 13", :open_subject_13, &reformed_gcse_mapper/2},
+      {"Open Subject - Ref'd GCSE 14", :open_subject_14, &reformed_gcse_mapper/2},
+      {"Open Subject - Ref'd GCSE 15", :open_subject_15, &reformed_gcse_mapper/2},
+
+      {"Science - Combined (Double Award)", :science_double_award, &science_gcse_double_award_mapper/2},
+      
+      {"Music (Vocational Quals)", :music_vocational, &cambridge_national_cert_mapper/2},
+      {"Music Tech (Vocational Quals)", :music_tech_vocational, &cambridge_national_cert_mapper/2},
+      {"Performing Arts (Vocational Quals)", :performing_arts_vocational, &cambridge_national_cert_mapper/2},
+      {"Sport (Vocational Quals)", :sport_vocational, &cambridge_national_cert_mapper/2},
+      {"Travel & Tourism (Vocational Quals)", :travel_tourism_vocational, &cambridge_national_cert_mapper/2},
+
+      {"Child Development (Vocational Quals)", :child_development_vocational, &btec_l1_l2_award_mapper/2},
+      {"Engineering (Vocational Quals)", :engineering_vocational, &btec_l1_l2_award_mapper/2},
+      {"Health & Social Care (Vocational Quals)", :health_and_social_care_vocational, &btec_l1_l2_award_mapper/2},
+      {"IT / iMedia / Digital Applications (Vocatinal Quals", :it_i_media_vocational, &btec_l1_l2_award_mapper/2},
+
+      {"WJEC L1/2 Voc Award - Subject 2", :wjec_vocational_2, &wjec_l1_l2_vocational_mapper/2},
+      {"WJEC L1/2 Voc Award - Subject 3", :wjec_vocational_3, &wjec_l1_l2_vocational_mapper/2},
+
+      {"NCFE L1/2 Vcert - Subject 1", :ncfe_vocational_1, &ncfe_l1_l2_vocational_mapper/2},
+      {"NCFE L1/2 Vcert - Subject 2", :ncfe_vocational_2, &ncfe_l1_l2_vocational_mapper/2}
+    ]
+  end
+
+  defp reformed_gcse_mapper(subject_key, grade) do
+    calced_grade = case grade do
+      "" -> nil
+      "U" -> 0
+      _ ->
+        {value, _} = Float.parse(grade)
+        value
+    end
+
+    {subject_key, calced_grade}
+  end
+
+  defp cambridge_national_cert_mapper(subject_key, grade) do
+    calced_grade = case grade do
+      "L2D*" -> 8.5
+      "*2" -> 8.5
+      "L2D" -> 7
+      "D2" -> 7
+      "L2M" -> 5.5
+      "M2" -> 5.5
+      "L2P" -> 4
+      "P2" -> 4
+      "L1D" -> 3
+      "D1" -> 3
+      "L1M" -> 2
+      "M1" -> 2
+      "L1P" -> 1.25
+      "P1" -> 1.25
+      "F" -> 0
+      "U" -> 0
+      "" -> nil
+    end
+    
+    {subject_key, calced_grade}
+  end
+
+  defp btec_l1_l2_award_mapper(subject_key, grade) do
+    calced_grade = case grade do
+      "L2D*" -> 8.5
+      "*2" -> 8.5
+      "L2D" -> 7
+      "D2" -> 7
+      "L2M" -> 5.5
+      "M2" -> 5.5
+      "L2P" -> 4
+      "P2" -> 4
+      "L1D" -> 3
+      "D1" -> 3
+      "L1M" -> 2
+      "M1" -> 2
+      "L1P" -> 1.25
+      "P1" -> 1.25
+      "F" -> 0
+      "U" -> 0
+      "" -> nil
+    end
+
+    {subject_key, calced_grade}
+  end
+
+  defp wjec_l1_l2_vocational_mapper(subject_key, grade) do
+    calced_grade = case grade do
+      "L2D*" -> 8.5
+      "*2" -> 8.5
+      "L2D" -> 7.0
+      "D2" -> 7.0
+      "L2M" -> 5.5
+      "M2" -> 5.5
+      "L2P" -> 4.0
+      "P2" -> 4.0
+      "L1D*" -> 3.0
+      "*1" -> 3.0
+      "L1D" -> 2.0
+      "D1" -> 2.0
+      "L1M" -> 1.5
+      "M1" -> 1.5
+      "L1P" -> 1.0
+      "P1" -> 1.0
+      "F" -> 0
+      "U" -> 0
+      "" -> nil
+    end
+
+    {subject_key, calced_grade}
+  end
+
+  defp ncfe_l1_l2_vocational_mapper(subject_key, grade) do
+    calced_grade = case grade do
+      "L2D*" -> 8.5
+      "*2" -> 8.5
+      "L2D" -> 7
+      "D2" -> 7
+      "L2M" -> 5.5
+      "M2" -> 5.5
+      "L2P" -> 4
+      "P2" -> 4
+      "L1D" -> 3
+      "D1" -> 3
+      "L1M" -> 2
+      "M1" -> 2
+      "L1P" -> 1.25
+      "P1" -> 1.25
+      "F" -> 0
+      "U" -> 0
+      "" -> nil
+    end
+
+    {subject_key, calced_grade}
+  end
+  
+  defp science_gcse_double_award_mapper(_subject_key, grade) do
+    # This ONLY applies to the Science double award. In this case
+    # we get a double grade which represents 2 GCSE's, each with their
+    # own grade. Example: 9-9 or 8-7. This comes in to us as a string
+    # float, such as "99.0" or "87.0".
+    # As this is a double award, it can be counted twice if necessary
+    # for a given student. To do this, we add each individual grade together
+    # and deliver half the grade per award. So a 87.0 would become 7.5 because
+    # 8 + 7 = 15 and 15 / 2 = 7.5. This would result in award 1 getting 7.5,
+    # and award 2 getting 7.5.
+    # This is a bit odd, but it's how the government choose to calculate it.
+    calced_grade = case grade do
+      "99.00" -> 9.0
+      "98.00" -> 8.5
+      "88.00" -> 8.0
+      "87.00" -> 7.5
+      "77.00" -> 7.0
+      "76.00" -> 6.5
+      "66.00" -> 6.0
+      "65.00" -> 5.5
+      "55.00" -> 5.0
+      "54.00" -> 4.5
+      "44.00" -> 4.0
+      "43.00" -> 3.5
+      "33.00" -> 3.0
+      "32.00" -> 2.5
+      "22.00" -> 2.0
+      "21.00" -> 1.5
+      "11.00" -> 1.0
+      "U" -> 0
+      "" -> nil
+    end
+
+    [{:science_double_award_1, calced_grade}, {:science_double_award_2, calced_grade}]
+  end
+end
+
+normalised_results =
+  raw_results
+  |> Enum.map(fn raw_student_record ->
+    # First, clean up the student record by pulling out everything we're interested in
+    # which can just be mapped over without any changes needed.
+    student_data = StudentRecordNormalisers.normalise_student_record(raw_student_record)
+
+    # Now normalise all the grades into atom keys with float values. Drop any
+    # subjects which the student didn't sit, or and break out double awards into
+    # two entries.
+    subject_results =
+      raw_student_record
+      |> Enum.map(fn {key, value} ->
+        GradeNormalisers.normalise_grade(key, value)
+      end)
+      |> Enum.reduce(%{}, fn result, acc ->
+        case result do
+          :no_normaliser_found ->
+            # subject not supported
+            acc
+          {_subject_key, nil} ->
+            # student didn't sit single award subject
+            acc
+          [{_subject_1_key, nil}, {_subject_2_key, nil}] ->
+            # student didn't sit double award subject
+            acc
+          {subject_key, grade} ->
+            # single award
+            Map.put(acc, subject_key, grade)
+          [{subject_1_key, grade_1}, {subject_2_key, grade_2}] ->
+            # double award
+            acc
+            |> Map.put(subject_1_key, grade_1)
+            |> Map.put(subject_2_key, grade_2)
+        end
+      end)
+
+    Map.put(student_data, :subject_results, subject_results)
+  end)
+```
+
+## Attainment 8 - How well a student performed in their exams
+
+A students Attainment 8 shows what they managed to achieve in their final GCSE exam results. It is based exclusively on their exam results.
+
+The attainment 8 isn't all that useful by itself, but it feeds into the Progress 8 score which we will calculate after. Attainment 8 is also not something students will think about for themselves, but it helps us to compare cohorts of students, and understands a schools performance.
+
+Attainment 8 is calculated via a series of weighted buckets. Particular subjects fit into different buckets, and some buckets are weighted higher. This calculation and the subject bucket assignments are dictated by the DfE.
+
+### Bucket 1 - English and Maths
+
+This is for English and Maths, and the end result is double weighted. Bucket 1 is calculated by taking the best grade between English Literature and English Language, and adding it to the grade for Maths. For example, a student with English Literature of 4, English Language of 5, and Maths of 4 will get a final Bucket 1 grade of 18. The English Language grade was higher, so that was doubled and added to Maths which was also doubled.
+
+The unused English grade can be re-used in Bucket 3 later on.
+
+### Bucket 2 - English Baccalaureate (EBacc)
+
+Sciences, Computing, Geography, History, and Modern Foreign Languages make up the majority of the English Baccalaureate which is Bucket 2. The top 3 grades from across these subjects are selected, and added together to create the Bucket 2 result. This bucket is single weighted.
+
+### Bucket 3 - Open Subjects (Vocationals)
+
+Vocational qualifications such as BTEC's and anything else fall into Bucket 3. The unused English subject from Bucket 1 is also included here. Like Bucket 2, we take the top three grades and add them together to get the final Bucket 3 result. This bucket is also single weighted.
+
+### Total Attainment 8
+
+The total attainment 8 is simply calculated by adding together the total value from all three buckets. We also calculate a 10 subject average which is used in other calculations later on.
+
+```elixir
+defmodule Attainment8 do
+  def calculate_bucket_1(attainment_8, subject_results) do
+    english = get_higher_grade(subject_results, :english_literature, :english_language)
+    
+    bucket_1_result = %{
+      english: english,
+      maths: %{subject_key: :maths, grade: subject_results[:maths]},
+      total: sum_bucket_grades(subject_results[:maths], english[:grade], nil, 2.0)
+    }
+
+    Map.put(attainment_8, :bucket_1, bucket_1_result)
+  end
+
+  def calculate_bucket_2(attainment_8, subject_results) do
+    {subject_1, subject_2, subject_3} = get_top_three_subjects(subject_results, bucket_2_subjects())
+    
+    bucket_2_result = %{
+      subject_1: subject_1,
+      subject_2: subject_2,
+      subject_3: subject_3,
+      total: sum_bucket_grades(subject_1[:grade], subject_2[:grade], subject_3[:grade])
+    }
+
+    Map.put(attainment_8, :bucket_2, bucket_2_result)
+  end
+
+  def calculate_bucket_3(attainment_8, subject_results) do
+    # The un-used English subject can be included in Bucket 3
+    remaining_english_subject = case attainment_8 do
+      %{bucket_1: %{subject_key: :english_literature}} ->
+        :english_language
+      _ -> :english_literature
+    end
+
+    # Anything which was not used in Bucket 2, can also be included in Bucket 3
+    remaining_bucket_2_subjects =
+      bucket_2_subjects()
+      |> Enum.filter(fn subject ->
+        !Enum.any?(1..3, fn i ->
+          subject == attainment_8[:bucket_2][:"subject_#{i}"][:subject_key]
+        end)
+      end)
+
+    # Create full, personalised list, of bucket 3 subjects for the student
+    available_bucket_3_subjects =
+      bucket_3_subjects()
+        ++ [remaining_english_subject]
+          ++ remaining_bucket_2_subjects
+
+    {subject_1, subject_2, subject_3} = get_top_three_subjects(subject_results, available_bucket_3_subjects)
+
+    bucket_3_result = %{
+      subject_1: subject_1,
+      subject_2: subject_2,
+      subject_3: subject_3,
+      total: sum_bucket_grades(subject_1[:grade], subject_2[:grade], subject_3[:grade])
+    }
+
+    Map.put(attainment_8, :bucket_3, bucket_3_result)
+  end
+
+  def calculate_total(attainment_8) do
+    bucket_1_total = attainment_8[:bucket_1][:total]
+    bucket_2_total = attainment_8[:bucket_2][:total]
+    bucket_3_total = attainment_8[:bucket_3][:total]
+    total = (bucket_1_total + bucket_2_total + bucket_3_total)
+
+    attainment_8_total = %{
+      total_score: (bucket_1_total + bucket_2_total + bucket_3_total),
+      average_score: (total / 10.0) # This is fixed at 10 for all students as per DfE formulas
+    }
+    
+    Map.put(attainment_8, :total, attainment_8_total)
+  end
+
+  def bucket_1_subjects() do
+    [
+      :english_language,
+      :english_literature,
+      :maths
+    ]
+  end
+  
+  def bucket_2_subjects() do
+    [
+      :science_double_award_1,
+      :science_double_award_2,
+      :science_biology,
+      :science_chemistry,
+      :science_physics,
+      :ict_computing,
+      :geography,
+      :history,
+      :mfl_french,
+      :mfl_german,
+      :mfl_spanish,
+      :mfl_chinese,
+      :mfl_other,
+    ]
+  end
+
+  def bucket_3_subjects() do
+    [
+      :art,
+      :business_studies,
+      :design_and_technology,
+      :drama,
+      :food_prep_and_nutrition,
+      :media_studies,
+      :music,
+      :photography,
+      :physical_education,
+      :religious_studies,
+      :textiles,
+      :gcse_other,
+      :open_subject_13,
+      :open_subject_14,
+      :open_subject_15,
+      :music_vocational,
+      :music_tech_vocational,
+      :performing_arts_vocational,
+      :sport_vocational,
+      :travel_tourism_vocational,
+      :child_development_vocational,
+      :engineering_vocational,
+      :health_and_social_care_vocational,
+      :it_i_media_vocational,
+      :wjec_vocational_2,
+      :wjec_vocational_3,
+      :ncfe_vocational_1,
+      :ncfe_vocational_2
+      
+      #"L2 Non-Counting Qual - AQA L2 Further Maths Cert",
+      #"L2 Non-Counting Qual - Subject 2",
+      #"L1/2 (Fdn/High) Project",
+      #"L1/2 Non-Counting Qual- Subject 1",
+      #"L1/2 Non-Counting Qual- Subject 2",
+      #"L1 Non-Counting Qual - Subject 1",
+      #"L1 Non-Counting Qual - Subject 2",
+      #"Entry Level Cert - Subject 1",
+      #"Entry Level Cert - Subject 2",
+      #"Entry Level Cert - Subject 3",
+    ]
+  end
+
+  defp sum_bucket_grades(subject_1_grade, subject_2_grade, subject_3_grade, weight \\ 1) do
+    subject_1_grade = if subject_1_grade != nil do
+      subject_1_grade
+    else
+      0
+    end
+
+    subject_2_grade = if subject_2_grade != nil do
+      subject_2_grade
+    else
+      0
+    end
+
+    subject_3_grade = if subject_3_grade != nil do
+      subject_3_grade
+    else
+      0
+    end
+
+    (subject_1_grade * weight) + (subject_2_grade * weight) + (subject_3_grade * weight)
+  end
+
+  defp filter_subjects(all_subjects, allowed_subjects), do:
+    Enum.filter(all_subjects, fn {key, _value} -> key in allowed_subjects end)
+
+  defp create_subject_grade_map({subject_key, subject_grade}) do
+    %{
+      subject_key: subject_key,
+      grade: subject_grade
+    }
+  end
+
+  defp sort_subject_grade_list(subject_grade_list), do:
+    Enum.sort(subject_grade_list, &(&1[:grade] >= &2[:grade]))
+
+  defp get_top_three_subjects(student_record, available_subjects) do
+    sorted_grades =
+      student_record
+      |> Map.to_list()
+      |> filter_subjects(available_subjects)
+      |> Enum.map(&create_subject_grade_map/1)
+      |> sort_subject_grade_list()
+
+    empty_grade = create_subject_grade_map({:empty, 0})
+
+    case sorted_grades do
+      [subject_1, subject_2, subject_3 | _] -> {subject_1, subject_2, subject_3}
+      [subject_1, subject_2] -> {subject_1, subject_2, empty_grade}
+      [subject_1] -> {subject_1, empty_grade, empty_grade}
+      [] -> {empty_grade, empty_grade, empty_grade}
+    end
+  end
+
+  defp get_higher_grade(row, subject_1, subject_2) do
+    subject_1_grade = row[subject_1]
+    subject_2_grade = row[subject_2]
+    if subject_1_grade >= subject_2_grade do
+      %{subject_key: subject_1, grade: subject_1_grade}
+    else
+      %{subject_key: subject_2, grade: subject_2_grade}
+    end
+  end
+end
+
+results_with_attainment_8 =
+  normalised_results
+  |> Enum.map(fn student_record ->
+    attainment_8 =
+      %{}
+      |> Attainment8.calculate_bucket_1(student_record[:subject_results])
+      |> Attainment8.calculate_bucket_2(student_record[:subject_results])
+      |> Attainment8.calculate_bucket_3(student_record[:subject_results])
+      |> Attainment8.calculate_total()
+    
+    
+    Map.put(student_record, :attainment_8, attainment_8)
+  end)
+```
+
+## Progress 8 - The amount of progress a student made between KS2 and KS3
+
+A students Progress 8 is a representation of how much progress a student made between KS2 and the end of KS3. It is calculated using a lookup data set published by the DfE for each cohort after they've taken their final GCSE exams. This data set defines an expected progress of a student in a subject given a particular KS2 result.
+
+Progress 8 is not something which students themselves ever receive or think about. It is purely to help assess the performance of a school.
+
+Like with Attainment 8, the Progress 8 calculations are given by the DfE.
+
+<!-- livebook:{"break_markdown":true} -->
+
+Implementation notes:
+
+* English P8 = Actual grade - (English estimate / 2)
+* Maths P8 = Actual grade - (Maths estimate / 2)
+* Each EBacc P8 = Actual grade - (EBacc estimate / 3)
+* Each Open P8 = Actual grade - (Open estimate / 3)
+
+Each bucket total is the sum of each included subjects P8.
+
+```elixir
+# Load in the national A8 estimate data. We compare this to the actual results of
+# each student to calculate their Progress 8 scores.
+a8_national_estimates =
+  "/Users/elliot/code/school_kit/notebooks/files/2023-a8-national-estimates.csv"
+  |> File.stream!()
+  |> CSV.decode(headers: true)
+  |> Enum.map(fn {:ok, i} ->
+    {ks2_average_level, _} = Float.parse(i["Key stage 2 fine level"])
+    {a8_estimate, _} = Float.parse(i["Attainment 8 estimate"])
+    {a8_english_estimate, _} = Float.parse(i["A8 Nat Est - English"])
+    {a8_maths_estimate, _} = Float.parse(i["A8 Nat Est - Maths"])
+    {a8_EBacc_estimate, _} = Float.parse(i["A8 Nat Est - EBacc"])
+    {a8_open_estimate, _} = Float.parse(i["A8 Nat Est - Open"])
+    {average_EBacc_slots_filled, _} = Float.parse(i["Average EBacc slots filled (out of 3)"])
+    {average_open_slots_filled, _} = Float.parse(i["Average open slots filled (out of 3)"])
+    
+    %{
+      ks2_average_level: ks2_average_level,
+      a8_estimate: a8_estimate,
+      a8_english_estimate: a8_english_estimate,
+      a8_maths_estimate: a8_maths_estimate,
+      a8_EBacc_estimate: a8_EBacc_estimate,
+      a8_open_estimate: a8_open_estimate,
+      average_EBacc_slots_filled: average_EBacc_slots_filled,
+      average_open_slots_filled: average_open_slots_filled
+    }
+  end)
+
+defmodule Progress8 do
+  def calculate_progress_8_per_subject(student_record, a8_estimates) do
+    subject_progress_map = subject_progress_calculator_map()
+  
+    student_record[:subject_results]
+    |> Enum.map(fn {subject_key, grade} ->
+      {_subject_key, calculator_fn} = Enum.find(subject_progress_map, fn {prog_subject_key, _calculator_fn} ->
+        prog_subject_key == subject_key
+      end)
+
+      subject_result = %{
+        grade: grade,
+        progress_8: calculator_fn.(a8_estimates, grade)
+      }
+
+      {subject_key, subject_result}
+    end)
+    |> Map.new()
+  end
+
+  defp english_progress_8_calculator(a8_national_estimates, subject_grade) do
+    subject_grade - (a8_national_estimates.a8_english_estimate / 2.0)
+  end
+
+  defp maths_progress_8_calculator(a8_national_estimates, subject_grade) do
+    subject_grade - (a8_national_estimates.a8_maths_estimate / 2.0)
+  end
+
+  defp ebacc_progress_8_calculator(a8_national_estimates, subject_grade) do
+    subject_grade - (a8_national_estimates.a8_EBacc_estimate / 3.0)
+  end
+
+  defp open_progress_8_calculator(a8_national_estimates, subject_grade) do
+    subject_grade - (a8_national_estimates.a8_open_estimate / 3.0)
+  end
+
+  defp subject_progress_calculator_map() do
+    [
+      {:english_language, &english_progress_8_calculator/2},
+      {:english_literature, &english_progress_8_calculator/2},
+    
+      {:maths, &maths_progress_8_calculator/2},
+    
+      {:science_biology, &ebacc_progress_8_calculator/2},
+      {:science_chemistry, &ebacc_progress_8_calculator/2},
+      {:science_physics, &ebacc_progress_8_calculator/2},
+      {:ict_computing, &ebacc_progress_8_calculator/2},
+      {:geography, &ebacc_progress_8_calculator/2},
+      {:history, &ebacc_progress_8_calculator/2},
+      {:mfl_french, &ebacc_progress_8_calculator/2},
+      {:mfl_german, &ebacc_progress_8_calculator/2},
+      {:mfl_spanish, &ebacc_progress_8_calculator/2},
+      {:mfl_chinese, &ebacc_progress_8_calculator/2},
+      {:mfl_other, &ebacc_progress_8_calculator/2},
+      {:science_double_award_1, &ebacc_progress_8_calculator/2},
+      {:science_double_award_2, &ebacc_progress_8_calculator/2},
+    
+      {:art, &open_progress_8_calculator/2},
+      {:business_studies, &open_progress_8_calculator/2},
+      {:design_and_technology, &open_progress_8_calculator/2},
+      {:drama, &open_progress_8_calculator/2},
+      {:food_prep_and_nutrition, &open_progress_8_calculator/2},
+      {:media_studies, &open_progress_8_calculator/2},
+      {:music, &open_progress_8_calculator/2},
+      {:photography, &open_progress_8_calculator/2},
+      {:physical_education, &open_progress_8_calculator/2},
+      {:religious_studies, &open_progress_8_calculator/2},
+      {:textiles, &open_progress_8_calculator/2},
+      {:gcse_other, &open_progress_8_calculator/2},
+      {:open_subject_13, &open_progress_8_calculator/2},
+      {:open_subject_14, &open_progress_8_calculator/2},
+      {:open_subject_15, &open_progress_8_calculator/2},
+      {:music_vocational, &open_progress_8_calculator/2},
+      {:music_tech_vocational, &open_progress_8_calculator/2},
+      {:performing_arts_vocational, &open_progress_8_calculator/2},
+      {:sport_vocational, &open_progress_8_calculator/2},
+      {:travel_tourism_vocational, &open_progress_8_calculator/2},
+      {:child_development_vocational, &open_progress_8_calculator/2},
+      {:engineering_vocational, &open_progress_8_calculator/2},
+      {:health_and_social_care_vocational, &open_progress_8_calculator/2},
+      {:it_i_media_vocational, &open_progress_8_calculator/2},
+      {:wjec_vocational_2, &open_progress_8_calculator/2},
+      {:wjec_vocational_3, &open_progress_8_calculator/2},
+      {:ncfe_vocational_1, &open_progress_8_calculator/2},
+      {:ncfe_vocational_2, &open_progress_8_calculator/2}
+    ]
+  end
+
+  def calculate_progress_8(student_record, subjects_progress_8, a8_national_estimates) do
+    bucket_1 = calculate_progress_8_bucket_1(student_record.attainment_8.bucket_1, subjects_progress_8, a8_national_estimates)
+    bucket_2 = calculate_progress_8_bucket_2(student_record.attainment_8.bucket_2, subjects_progress_8, a8_national_estimates)
+    bucket_3 = calculate_progress_8_bucket_3(student_record.attainment_8.bucket_3, subjects_progress_8, a8_national_estimates)
+
+    %{
+      bucket_1: bucket_1,
+      bucket_2: bucket_2,
+      bucket_3: bucket_3,
+      total: %{
+        total_score: student_record.attainment_8.total.total_score,
+        average_score: student_record.attainment_8.total.average_score,
+        progress_8: (bucket_1.progress_8 + bucket_2.progress_8 + bucket_3.progress_8)
+      }
+      
+    }
+  end
+
+  defp calculate_progress_8_bucket_1(bucket_attainment, subjects_progress_8, a8_national_estimates) do
+    english_subject_key = bucket_attainment.english.subject_key
+    english_progress_8_default = english_progress_8_calculator(a8_national_estimates, 0)
+    english_progress_8 = get_subject_progress_8(
+      english_subject_key,
+      subjects_progress_8,
+      english_progress_8_default
+    )
+
+    maths_progress_8_default = maths_progress_8_calculator(a8_national_estimates, 0)
+    maths_progress_8 = get_subject_progress_8(
+      :maths,
+      subjects_progress_8,
+      maths_progress_8_default
+    )
+    
+    %{
+      maths: %{
+        subject_key: :maths,
+        grade: bucket_attainment.maths.grade,
+        progress_8: maths_progress_8
+      },
+      english: %{
+        subject_key: english_subject_key,
+        grade: bucket_attainment.english.grade,
+        progress_8: english_progress_8
+      },
+      total: bucket_attainment.total,
+      # Bucket 1 subjects are double weighted. We do this for the final calculation
+      # rather than on the subjects themselves for clarity.
+      progress_8: ((maths_progress_8 + english_progress_8) * 2.0)
+    }
+  end
+
+  defp calculate_progress_8_bucket_2(bucket_attainment, subjects_progress_8, a8_national_estimates) do
+    calculate_progress_8_for_three_subject_bucket(
+      bucket_attainment,
+      subjects_progress_8,
+      ebacc_progress_8_calculator(a8_national_estimates, 0)
+    )
+  end
+
+  defp calculate_progress_8_bucket_3(bucket_attainment, subjects_progress_8, a8_national_estimates) do
+    calculate_progress_8_for_three_subject_bucket(
+      bucket_attainment,
+      subjects_progress_8,
+      open_progress_8_calculator(a8_national_estimates, 0)
+    )
+  end
+  
+  defp calculate_progress_8_for_three_subject_bucket(bucket_attainment, subjects_progress_8, default_progress) do
+    subject_1 = %{
+      subject_key: bucket_attainment.subject_1.subject_key,
+      grade: bucket_attainment.subject_1.grade,
+      progress_8: get_subject_progress_8(
+        bucket_attainment.subject_1.subject_key,
+        subjects_progress_8,
+        default_progress
+      )
+    }
+
+    subject_2 = %{
+      subject_key: bucket_attainment.subject_2.subject_key,
+      grade: bucket_attainment.subject_2.grade,
+      progress_8: get_subject_progress_8(
+        bucket_attainment.subject_2.subject_key,
+        subjects_progress_8,
+        default_progress
+      )
+    }
+
+    subject_3 = %{
+      subject_key: bucket_attainment.subject_3.subject_key,
+      grade: bucket_attainment.subject_3.grade,
+      progress_8: get_subject_progress_8(
+        bucket_attainment.subject_3.subject_key,
+        subjects_progress_8,
+        default_progress
+      )
+    }
+    
+    %{
+      subject_1: subject_1,
+      subject_2: subject_2,
+      subject_3: subject_3,
+      total: bucket_attainment.total,
+      progress_8: (subject_1.progress_8 + subject_2.progress_8 + subject_3.progress_8)
+    }
+  end
+  
+  defp get_subject_progress_8(subject_key, subjects_progress_8, default) do
+    case subjects_progress_8[subject_key] do
+      %{progress_8: progress_8} -> progress_8
+      nil -> default
+    end
+  end
+end
+
+results_with_progress_8 =
+  results_with_attainment_8
+  |> Enum.map(fn student_record ->
+    if student_record.ks2 != nil do
+      # Get students relevant A8 national estimate
+      a8_estimates = Enum.find(a8_national_estimates, &(&1.ks2_average_level == student_record.ks2.average_score))
+      
+      # Calculate Progress 8 for each subject
+      progress_8_per_subject_with_grades = Progress8.calculate_progress_8_per_subject(
+        student_record,
+        a8_estimates
+      )
+  
+      # Calculate Progress 8 for each bucket, and the total for the student
+      progress_8 = Progress8.calculate_progress_8(
+        student_record,
+        progress_8_per_subject_with_grades,
+        a8_estimates
+      )
+
+      student_record
+      |> Map.put(:subject_results, progress_8_per_subject_with_grades)
+      |> Map.put(:progress_8, progress_8)
+    else
+      # Can't calculate progress 8, since we don't have any KS2 data
+      student_record
+      |> Map.put(:progress_8, nil)
+    end
+  end)
+
+```
+
+## Write results to a file
+
+Now we've completed all our data cleaning and initial calculations, we can output the data into a JSON file. This will maintain the structure we've put together, and make it easy to load into other notebooks for analysis.
+
+```elixir
+json_data = Jason.encode!(results_with_progress_8)
+:ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/processed-results.json", json_data)
+```
+
+<!-- livebook:{"offset":32718,"stamp":{"token":"XCP.ai99q9Rg_cHe_Z8Ox16Zd1CmItwYlI_2ItBGy1Yz1ERRlRUADbU61WwY6oJQbzVqc4J6YB6WUQ0k-Yi-RFppRPX6p6aLvEqw2DFkNg","version":2}} -->

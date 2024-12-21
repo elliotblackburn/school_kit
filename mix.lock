@@ -1,0 +1,4 @@
+%{
+  "csv": {:hex, :csv, "3.2.1", "6d401f1ed33acb2627682a9ab6021e96d33ca6c1c6bccc243d8f7e2197d032f5", [:mix], [], "hexpm", "8f55a0524923ae49e97ff2642122a2ce7c61e159e7fe1184670b2ce847aee6c8"},
+  "jason": {:hex, :jason, "1.4.4", "b9226785a9aa77b6857ca22832cffa5d5011a667207eb2a0ad56adb5db443b8a", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "c5eb0cab91f094599f94d55bc63409236a8ec69a21a67814529e8d5f6cc90b3b"},
+}
