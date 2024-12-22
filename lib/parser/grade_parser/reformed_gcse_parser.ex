@@ -1,6 +1,4 @@
 defmodule SchoolKit.Parser.GradeParser.ReformedGCSEParser do
-  @behaviour SchoolKit.Parser.GradeParser.ParserBehaviour
-
   def parse(subject_key, grade) do
     calced_grade =
       case grade do

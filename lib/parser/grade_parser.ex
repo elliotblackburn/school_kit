@@ -73,7 +73,3 @@ defmodule SchoolKit.Parser.GradeParser do
     }
   end
 end
-
-defmodule SchoolKit.Parser.GradeParser.ParserBehaviour do
-  @callback parse(atom, String.t()) :: {atom, float | nil}
-end

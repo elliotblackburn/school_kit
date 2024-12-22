@@ -1,6 +1,4 @@
 defmodule SchoolKit.Parser.GradeParser.ScienceGCSEDoubleAwardParser do
-  @behaviour SchoolKit.Parser.GradeParser.ParserBehaviour
-
   def parse(_subject_key, grade) do
     # This ONLY applies to the Science double award. In this case
     # we get a double grade which represents 2 GCSE's, each with their
