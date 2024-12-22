@@ -1,5 +1,5 @@
 defmodule SchoolKit.Parser.GradeParser.BTECL1L2AwardParserTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias SchoolKit.Parser.GradeParser.BTECL1L2AwardParser
 

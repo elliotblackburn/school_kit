@@ -1,5 +1,5 @@
 defmodule SchoolKit.Parser.GradeParser.NCFEL1L2VocationalParserTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias SchoolKit.Parser.GradeParser.NCFEL1L2VocationalParser
 

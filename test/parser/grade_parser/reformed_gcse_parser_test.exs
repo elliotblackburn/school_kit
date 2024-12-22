@@ -1,5 +1,5 @@
 defmodule SchoolKit.Parser.GradeParser.ReformedGCSEParserTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias SchoolKit.Parser.GradeParser.ReformedGCSEParser
 
