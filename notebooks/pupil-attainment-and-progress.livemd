@@ -135,25 +135,4 @@ json_data = Jason.encode!(results_with_progress_8)
 :ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/processed-results.json", json_data)
 ```
 
-```elixir
-summary_results =
-  results_with_progress_8
-  |> Enum.map(fn r ->
-    #IO.inspect(r)
-    progress_8 = if r.progress_8 == nil do
-      nil
-    else
-      r.progress_8.total.progress_8
-    end
-    
-    %{
-      name: r.name,
-      progress_8: progress_8
-    }
-  end)
-
-json_summary_data = Jason.encode!(summary_results)
-:ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/results-summary.json", json_summary_data)
-```
-
-<!-- livebook:{"offset":7096,"stamp":{"token":"XCP.rL8i07jeKWpudmh8lCW53F7Aw1LpVeveC4gH4xBzb3IBQbScsXozVPzuCliqUXd52M9WEvkK3pI9-7ddJKJ9IGsBKHBheTk4s6jtvg","version":2}} -->
+<!-- livebook:{"offset":6657,"stamp":{"token":"XCP.kxx81KqiZlYeEIEIfIrYV0LipO4obDW2JChuAuhwUqmagG8U_cst-5lVIjcmdH9KH22khzjpinEJLsfWca4BejVDL1FYbNfIO6-LdA","version":2}} -->

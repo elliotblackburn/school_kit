@@ -16,24 +16,6 @@ defmodule SchoolKit.Progress8 do
   Each bucket total is the sum of each included subjects P8.
   """
 
-  defp english_progress_8_calculator(a8_national_estimates, subject_grade) do
-    # This is true when the subject is included in Bucket 1, but if it's included in Bucket 3
-    # then the divisor is 3.0 because it's classified as an Open subject in this case.
-    subject_grade - a8_national_estimates.a8_english_estimate / 2.0
-  end
-
-  defp maths_progress_8_calculator(a8_national_estimates, subject_grade) do
-    subject_grade - a8_national_estimates.a8_maths_estimate / 2.0
-  end
-
-  defp ebacc_progress_8_calculator(a8_national_estimates, subject_grade) do
-    subject_grade - a8_national_estimates.a8_EBacc_estimate / 3.0
-  end
-
-  defp open_progress_8_calculator(a8_national_estimates, subject_grade) do
-    subject_grade - a8_national_estimates.a8_open_estimate / 3.0
-  end
-
   def calculate_progress_8(student_record, a8_national_estimates) do
     bucket_1 =
       calculate_progress_8_bucket_1(
@@ -70,8 +52,6 @@ defmodule SchoolKit.Progress8 do
          a8_national_estimates
        ) do
     english_subject_key = bucket_attainment.english.subject_key
-
-    IO.inspect(bucket_attainment)
 
     english_grade = bucket_attainment.english.grade || 0
 
@@ -163,6 +143,24 @@ defmodule SchoolKit.Progress8 do
       total: bucket_attainment.total,
       progress_8: subject_1.progress_8 + subject_2.progress_8 + subject_3.progress_8
     }
+  end
+
+  defp english_progress_8_calculator(a8_national_estimates, subject_grade) do
+    # This is true when the subject is included in Bucket 1, but if it's included in Bucket 3
+    # then the divisor is 3.0 because it's classified as an Open subject in this case.
+    subject_grade - a8_national_estimates.a8_english_estimate / 2.0
+  end
+
+  defp maths_progress_8_calculator(a8_national_estimates, subject_grade) do
+    subject_grade - a8_national_estimates.a8_maths_estimate / 2.0
+  end
+
+  defp ebacc_progress_8_calculator(a8_national_estimates, subject_grade) do
+    subject_grade - a8_national_estimates.a8_EBacc_estimate / 3.0
+  end
+
+  defp open_progress_8_calculator(a8_national_estimates, subject_grade) do
+    subject_grade - a8_national_estimates.a8_open_estimate / 3.0
   end
 
   def load_national_estimates(path) do
