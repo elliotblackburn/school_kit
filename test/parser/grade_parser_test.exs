@@ -7,9 +7,9 @@ defmodule SchoolKit.Parser.GradeParserTest do
                {:english_language, 1.0}
     end
 
-    test "returns :no_normaliser_found for an unknown subject" do
+    test "returns :no_parser_found for an unknown subject" do
       assert SchoolKit.Parser.GradeParser.parse_grade("Unknown Subject", "A") ==
-               :no_normaliser_found
+               :no_parser_found
     end
 
     test "calls the correct parser for vocational subjects" do

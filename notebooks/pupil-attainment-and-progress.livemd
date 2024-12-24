@@ -108,22 +108,14 @@ results_with_progress_8 =
     if student_record.ks2 != nil do
       # Get students relevant A8 national estimate
       a8_estimates = Enum.find(a8_national_estimates, &(&1.ks2_average_level == student_record.ks2.average_score))
-      
-      # Calculate Progress 8 for each subject
-      progress_8_per_subject_with_grades = SchoolKit.Progress8.calculate_progress_8_per_subject(
-        student_record,
-        a8_estimates
-      )
   
       # Calculate Progress 8 for each bucket, and the total for the student
       progress_8 = SchoolKit.Progress8.calculate_progress_8(
         student_record,
-        progress_8_per_subject_with_grades,
         a8_estimates
       )
 
       student_record
-      |> Map.put(:subject_results, progress_8_per_subject_with_grades)
       |> Map.put(:progress_8, progress_8)
     else
       # Can't calculate progress 8, since we don't have any KS2 data
@@ -143,4 +135,25 @@ json_data = Jason.encode!(results_with_progress_8)
 :ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/processed-results.json", json_data)
 ```
 
-<!-- livebook:{"offset":6975,"stamp":{"token":"XCP.DUuCCf1iuq80Gp1V-G-2X9lfda5stnOPN1UZzPR2sTQ6Q17gB-z1tfGU9m3TAYlM2vDO8M2JZs5NGbO04RyDbaBwyDXAqiary7OaAQ","version":2}} -->
+```elixir
+summary_results =
+  results_with_progress_8
+  |> Enum.map(fn r ->
+    #IO.inspect(r)
+    progress_8 = if r.progress_8 == nil do
+      nil
+    else
+      r.progress_8.total.progress_8
+    end
+    
+    %{
+      name: r.name,
+      progress_8: progress_8
+    }
+  end)
+
+json_summary_data = Jason.encode!(summary_results)
+:ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/results-summary.json", json_summary_data)
+```
+
+<!-- livebook:{"offset":7096,"stamp":{"token":"XCP.rL8i07jeKWpudmh8lCW53F7Aw1LpVeveC4gH4xBzb3IBQbScsXozVPzuCliqUXd52M9WEvkK3pI9-7ddJKJ9IGsBKHBheTk4s6jtvg","version":2}} -->

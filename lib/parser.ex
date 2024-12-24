@@ -27,7 +27,7 @@ defmodule SchoolKit.Parser do
         end)
         |> Enum.reduce(%{}, fn result, acc ->
           case result do
-            :no_normaliser_found ->
+            :no_parser_found ->
               # subject not supported
               acc
 
@@ -38,6 +38,16 @@ defmodule SchoolKit.Parser do
             [{_subject_1_key, nil}, {_subject_2_key, nil}] ->
               # student didn't sit double award subject
               acc
+
+            {:english_language, grade} ->
+              acc
+              |> Map.put(:english_language, grade)
+              |> Map.put(:english_language_open, grade)
+
+            {:english_literature, grade} ->
+              acc
+              |> Map.put(:english_literature, grade)
+              |> Map.put(:english_literature_open, grade)
 
             {subject_key, grade} ->
               # single award

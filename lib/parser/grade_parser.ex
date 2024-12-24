@@ -9,7 +9,7 @@ defmodule SchoolKit.Parser.GradeParser do
   def parse_grade(subject, grade) do
     case Map.get(subject_grade_parsers(), subject) do
       nil ->
-        :no_normaliser_found
+        :no_parser_found
 
       {subject_key, mapper} ->
         mapper.(subject_key, grade)

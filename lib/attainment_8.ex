@@ -52,14 +52,16 @@ defmodule SchoolKit.Attainment8 do
   end
 
   def calculate_bucket_3(attainment_8, subject_results) do
-    # The un-used English subject can be included in Bucket 3
+    # The un-used English subject can be included in Bucket 3. We need to include
+    # the "open" version as this has a different Progress 8 weighting to the standard
+    # bucket 1 version.
     remaining_english_subject =
       case attainment_8 do
-        %{bucket_1: %{subject_key: :english_literature}} ->
-          :english_language
+        %{bucket_1: %{english: %{subject_key: :english_literature}}} ->
+          :english_language_open
 
         _ ->
-          :english_literature
+          :english_literature_open
       end
 
     # Anything which was not used in Bucket 2, can also be included in Bucket 3
