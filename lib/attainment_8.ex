@@ -25,6 +25,8 @@ defmodule SchoolKit.Attainment8 do
   The total attainment 8 is simply calculated by adding together the total value from all three buckets. We also calculate a 10 subject average which is used in other calculations later on.
   """
 
+  alias SchoolKit.Subjects
+
   def calculate_attainment_8(%{subject_results: subject_results} = student_record) do
     attainment_8 =
       %{}
@@ -50,7 +52,7 @@ defmodule SchoolKit.Attainment8 do
 
   def calculate_bucket_2(attainment_8, subject_results) do
     {subject_1, subject_2, subject_3} =
-      get_top_three_subjects(subject_results, bucket_2_subjects())
+      get_top_three_subjects(subject_results, Subjects.bucket_2_subjects())
 
     bucket_2_result = %{
       subject_1: subject_1,
@@ -77,7 +79,7 @@ defmodule SchoolKit.Attainment8 do
 
     # Anything which was not used in Bucket 2, can also be included in Bucket 3
     remaining_bucket_2_subjects =
-      bucket_2_subjects()
+      Subjects.bucket_2_subjects()
       |> Enum.filter(fn subject ->
         !Enum.any?(1..3, fn i ->
           subject == attainment_8[:bucket_2][:"subject_#{i}"][:subject_key]
@@ -86,7 +88,7 @@ defmodule SchoolKit.Attainment8 do
 
     # Create full, personalised list, of bucket 3 subjects for the student
     available_bucket_3_subjects =
-      bucket_3_subjects() ++
+      Subjects.bucket_3_subjects() ++
         [remaining_english_subject] ++
         remaining_bucket_2_subjects
 
@@ -116,76 +118,6 @@ defmodule SchoolKit.Attainment8 do
     }
 
     Map.put(attainment_8, :total, attainment_8_total)
-  end
-
-  def bucket_1_subjects() do
-    [
-      :english_language,
-      :english_literature,
-      :maths
-    ]
-  end
-
-  def bucket_2_subjects() do
-    [
-      :science_double_award_1,
-      :science_double_award_2,
-      :science_biology,
-      :science_chemistry,
-      :science_physics,
-      :ict_computing,
-      :geography,
-      :history,
-      :mfl_french,
-      :mfl_german,
-      :mfl_spanish,
-      :mfl_chinese,
-      :mfl_other
-    ]
-  end
-
-  def bucket_3_subjects() do
-    [
-      :art,
-      :business_studies,
-      :design_and_technology,
-      :drama,
-      :food_prep_and_nutrition,
-      :media_studies,
-      :music,
-      :photography,
-      :physical_education,
-      :religious_studies,
-      :textiles,
-      :gcse_other,
-      :open_subject_13,
-      :open_subject_14,
-      :open_subject_15,
-      :music_vocational,
-      :music_tech_vocational,
-      :performing_arts_vocational,
-      :sport_vocational,
-      :travel_tourism_vocational,
-      :child_development_vocational,
-      :engineering_vocational,
-      :health_and_social_care_vocational,
-      :it_i_media_vocational,
-      :wjec_vocational_2,
-      :wjec_vocational_3,
-      :ncfe_vocational_1,
-      :ncfe_vocational_2
-
-      # "L2 Non-Counting Qual - AQA L2 Further Maths Cert",
-      # "L2 Non-Counting Qual - Subject 2",
-      # "L1/2 (Fdn/High) Project",
-      # "L1/2 Non-Counting Qual- Subject 1",
-      # "L1/2 Non-Counting Qual- Subject 2",
-      # "L1 Non-Counting Qual - Subject 1",
-      # "L1 Non-Counting Qual - Subject 2",
-      # "Entry Level Cert - Subject 1",
-      # "Entry Level Cert - Subject 2",
-      # "Entry Level Cert - Subject 3",
-    ]
   end
 
   defp sum_bucket_grades(subject_1_grade, subject_2_grade, subject_3_grade, weight \\ 1) do
