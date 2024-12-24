@@ -25,6 +25,17 @@ defmodule SchoolKit.Attainment8 do
   The total attainment 8 is simply calculated by adding together the total value from all three buckets. We also calculate a 10 subject average which is used in other calculations later on.
   """
 
+  def calculate_attainment_8(%{subject_results: subject_results} = student_record) do
+    attainment_8 =
+      %{}
+      |> calculate_bucket_1(subject_results)
+      |> calculate_bucket_2(subject_results)
+      |> calculate_bucket_3(subject_results)
+      |> calculate_total()
+
+    Map.put(student_record, :attainment_8, attainment_8)
+  end
+
   def calculate_bucket_1(attainment_8, subject_results) do
     english = get_higher_grade(subject_results, :english_literature, :english_language)
 

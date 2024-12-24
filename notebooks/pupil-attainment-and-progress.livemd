@@ -64,15 +64,7 @@ The total attainment 8 is simply calculated by adding together the total value f
 results_with_attainment_8 =
   normalised_results
   |> Enum.map(fn student_record ->
-    attainment_8 =
-      %{}
-      |> SchoolKit.Attainment8.calculate_bucket_1(student_record[:subject_results])
-      |> SchoolKit.Attainment8.calculate_bucket_2(student_record[:subject_results])
-      |> SchoolKit.Attainment8.calculate_bucket_3(student_record[:subject_results])
-      |> SchoolKit.Attainment8.calculate_total()
-    
-    
-    Map.put(student_record, :attainment_8, attainment_8)
+    SchoolKit.Attainment8.calculate_attainment_8(student_record)
   end)
 ```
 
@@ -94,8 +86,7 @@ a8_national_estimates =
 results_with_progress_8 =
   results_with_attainment_8
   |> Enum.map(fn student_record ->
-    student_record
-    |> SchoolKit.Progress8.calculate_progress_8(a8_national_estimates)
+    SchoolKit.Progress8.calculate_progress_8(student_record, a8_national_estimates)
   end)
 
 ```
@@ -109,4 +100,4 @@ json_data = Jason.encode!(results_with_progress_8)
 :ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/processed-results.json", json_data)
 ```
 
-<!-- livebook:{"offset":5802,"stamp":{"token":"XCP.4XhnYnfU1_8JQM8nVB6R1rbWCXcnqzOQ6kKYUFl9qgixDolQwquCIWKHPubz89X00WtOPvKUYIhRCZVG4DEjAanoDQ_m_QkJbkdBCA","version":2}} -->
+<!-- livebook:{"offset":5464,"stamp":{"token":"XCP.y-INN4T7DHuaFS0K4OBeZNJNs1AWnytz1db2ZhNVvf3zbPJdSwn6i0b1j629ex03Yv9zUUq9qyGIHz9fyyzpOmTzwZUD9s4nKREY-Q","version":2}} -->
