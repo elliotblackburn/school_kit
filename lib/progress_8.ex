@@ -16,38 +16,37 @@ defmodule SchoolKit.Progress8 do
   Each bucket total is the sum of each included subjects P8.
   """
 
+  def calculate_progress_8(%{ks2: ks2} = student_record, _a8_national_estimates) when is_nil(ks2),
+    do: Map.put(student_record, :progress_8, nil)
+
   def calculate_progress_8(student_record, a8_national_estimates) do
-    bucket_1 =
-      calculate_progress_8_bucket_1(
+    attainment_estimates =
+      Enum.find(
+        a8_national_estimates,
+        &(&1.ks2_average_level == student_record.ks2.average_score)
+      )
+
+    progress_8 =
+      %{}
+      |> calculate_progress_8_bucket_1(
         student_record.attainment_8.bucket_1,
-        a8_national_estimates
+        attainment_estimates
       )
-
-    bucket_2 =
-      calculate_progress_8_bucket_2(
+      |> calculate_progress_8_bucket_2(
         student_record.attainment_8.bucket_2,
-        a8_national_estimates
+        attainment_estimates
       )
-
-    bucket_3 =
-      calculate_progress_8_bucket_3(
+      |> calculate_progress_8_bucket_3(
         student_record.attainment_8.bucket_3,
-        a8_national_estimates
+        attainment_estimates
       )
+      |> calculate_total(student_record)
 
-    %{
-      bucket_1: bucket_1,
-      bucket_2: bucket_2,
-      bucket_3: bucket_3,
-      total: %{
-        total_score: student_record.attainment_8.total.total_score,
-        average_score: student_record.attainment_8.total.average_score,
-        progress_8: bucket_1.progress_8 + bucket_2.progress_8 + bucket_3.progress_8
-      }
-    }
+    Map.put(student_record, :progress_8, progress_8)
   end
 
   defp calculate_progress_8_bucket_1(
+         progress_8,
          bucket_attainment,
          a8_national_estimates
        ) do
@@ -63,7 +62,7 @@ defmodule SchoolKit.Progress8 do
     maths_progress_8 =
       maths_progress_8_calculator(a8_national_estimates, maths_grade)
 
-    %{
+    bucket_1_result = %{
       maths: %{
         subject_key: :maths,
         grade: bucket_attainment.maths.grade,
@@ -79,30 +78,40 @@ defmodule SchoolKit.Progress8 do
       # rather than on the subjects themselves for clarity.
       progress_8: (maths_progress_8 + english_progress_8) * 2.0
     }
+
+    Map.put(progress_8, :bucket_1, bucket_1_result)
   end
 
   defp calculate_progress_8_bucket_2(
+         progress_8,
          bucket_attainment,
          a8_national_estimates
        ) do
-    calculate_progress_8_for_three_subject_bucket(
-      bucket_attainment,
-      fn subject_grade ->
-        ebacc_progress_8_calculator(a8_national_estimates, subject_grade)
-      end
-    )
+    bucket_2_result =
+      calculate_progress_8_for_three_subject_bucket(
+        bucket_attainment,
+        fn subject_grade ->
+          ebacc_progress_8_calculator(a8_national_estimates, subject_grade)
+        end
+      )
+
+    Map.put(progress_8, :bucket_2, bucket_2_result)
   end
 
   defp calculate_progress_8_bucket_3(
+         progress_8,
          bucket_attainment,
          a8_national_estimates
        ) do
-    calculate_progress_8_for_three_subject_bucket(
-      bucket_attainment,
-      fn subject_grade ->
-        open_progress_8_calculator(a8_national_estimates, subject_grade)
-      end
-    )
+    bucket_3_result =
+      calculate_progress_8_for_three_subject_bucket(
+        bucket_attainment,
+        fn subject_grade ->
+          open_progress_8_calculator(a8_national_estimates, subject_grade)
+        end
+      )
+
+    Map.put(progress_8, :bucket_3, bucket_3_result)
   end
 
   defp calculate_progress_8_for_three_subject_bucket(
@@ -161,6 +170,19 @@ defmodule SchoolKit.Progress8 do
 
   defp open_progress_8_calculator(a8_national_estimates, subject_grade) do
     subject_grade - a8_national_estimates.a8_open_estimate / 3.0
+  end
+
+  def calculate_total(progress_8, %{attainment_8: attainment_8} = _student_record) do
+    total = %{
+      total_score: attainment_8.total.total_score,
+      average_score: attainment_8.total.average_score,
+      progress_8:
+        progress_8.bucket_1.progress_8 +
+          progress_8.bucket_2.progress_8 +
+          progress_8.bucket_3.progress_8
+    }
+
+    Map.put(progress_8, :total, total)
   end
 
   def load_national_estimates(path) do

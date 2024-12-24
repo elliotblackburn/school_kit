@@ -76,24 +76,13 @@ results_with_attainment_8 =
   end)
 ```
 
-## Progress 8 - The amount of progress a student made between KS2 and KS3
+## Progress 8 - The amount of progress a student made during KS3
 
 A students Progress 8 is a representation of how much progress a student made between KS2 and the end of KS3. It is calculated using a lookup data set published by the DfE for each cohort after they've taken their final GCSE exams. This data set defines an expected progress of a student in a subject given a particular KS2 result.
 
 Progress 8 is not something which students themselves ever receive or think about. It is purely to help assess the performance of a school.
 
 Like with Attainment 8, the Progress 8 calculations are given by the DfE.
-
-<!-- livebook:{"break_markdown":true} -->
-
-Implementation notes:
-
-* English P8 = Actual grade - (English estimate / 2)
-* Maths P8 = Actual grade - (Maths estimate / 2)
-* Each EBacc P8 = Actual grade - (EBacc estimate / 3)
-* Each Open P8 = Actual grade - (Open estimate / 3)
-
-Each bucket total is the sum of each included subjects P8.
 
 ```elixir
 # Load in the national A8 estimate data. We compare this to the actual results of
@@ -105,23 +94,8 @@ a8_national_estimates =
 results_with_progress_8 =
   results_with_attainment_8
   |> Enum.map(fn student_record ->
-    if student_record.ks2 != nil do
-      # Get students relevant A8 national estimate
-      a8_estimates = Enum.find(a8_national_estimates, &(&1.ks2_average_level == student_record.ks2.average_score))
-  
-      # Calculate Progress 8 for each bucket, and the total for the student
-      progress_8 = SchoolKit.Progress8.calculate_progress_8(
-        student_record,
-        a8_estimates
-      )
-
-      student_record
-      |> Map.put(:progress_8, progress_8)
-    else
-      # Can't calculate progress 8, since we don't have any KS2 data
-      student_record
-      |> Map.put(:progress_8, nil)
-    end
+    student_record
+    |> SchoolKit.Progress8.calculate_progress_8(a8_national_estimates)
   end)
 
 ```
@@ -135,4 +109,4 @@ json_data = Jason.encode!(results_with_progress_8)
 :ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/processed-results.json", json_data)
 ```
 
-<!-- livebook:{"offset":6657,"stamp":{"token":"XCP.kxx81KqiZlYeEIEIfIrYV0LipO4obDW2JChuAuhwUqmagG8U_cst-5lVIjcmdH9KH22khzjpinEJLsfWca4BejVDL1FYbNfIO6-LdA","version":2}} -->
+<!-- livebook:{"offset":5802,"stamp":{"token":"XCP.4XhnYnfU1_8JQM8nVB6R1rbWCXcnqzOQ6kKYUFl9qgixDolQwquCIWKHPubz89X00WtOPvKUYIhRCZVG4DEjAanoDQ_m_QkJbkdBCA","version":2}} -->
