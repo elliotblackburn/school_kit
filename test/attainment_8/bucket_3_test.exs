@@ -1,5 +1,6 @@
 defmodule SchoolKit.Attainment8.Bucket3Test do
   use ExUnit.Case, async: true
+  doctest SchoolKit.Attainment8.Bucket3
 
   alias SchoolKit.Attainment8.Bucket3
 

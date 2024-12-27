@@ -1,5 +1,6 @@
 defmodule SchoolKit.Parser.StudentRecordParserTest do
   use ExUnit.Case, async: true
+  doctest SchoolKit.Parser.StudentRecordParser
   alias SchoolKit.Parser.StudentRecordParser
 
   describe "parse_student_record/1" do

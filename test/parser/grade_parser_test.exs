@@ -1,5 +1,6 @@
 defmodule SchoolKit.Parser.GradeParserTest do
   use ExUnit.Case, async: true
+  doctest SchoolKit.Parser.GradeParser
 
   describe "parse_grade/2" do
     test "returns parsed grade for a known subject" do
