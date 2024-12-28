@@ -16,34 +16,32 @@ defmodule SchoolKit.Progress8 do
   Each bucket total is the sum of each included subjects P8.
   """
 
+  alias SchoolKit.Attainment8.NationalEstimates
   alias SchoolKit.Progress8.Bucket1
   alias SchoolKit.Progress8.Bucket2
   alias SchoolKit.Progress8.Bucket3
 
-  def calculate_progress_8(%{ks2: ks2} = student_record, _a8_national_estimates) when is_nil(ks2),
+  def calculate_progress_8(%{ks2: ks2} = student_record, _cohort_year) when is_nil(ks2),
     do: Map.put(student_record, :progress_8, nil)
 
-  def calculate_progress_8(student_record, a8_national_estimates) do
-    attainment_estimates =
-      Enum.find(
-        a8_national_estimates,
-        &(&1.ks2_average_level == student_record.ks2.average_score)
-      )
+  def calculate_progress_8(student_record, cohort_year) do
+    student_attainment_estimates =
+      NationalEstimates.get_national_estimates(cohort_year, student_record.ks2.average_score)
 
     progress_8 =
       %{}
       |> Bucket1.calculate(
         student_record.attainment_8.bucket_1,
-        attainment_estimates,
+        student_attainment_estimates,
         student_record.subject_results
       )
       |> Bucket2.calculate(
         student_record.attainment_8.bucket_2,
-        attainment_estimates
+        student_attainment_estimates
       )
       |> Bucket3.calculate(
         student_record.attainment_8.bucket_3,
-        attainment_estimates
+        student_attainment_estimates
       )
       |> calculate_total(student_record)
 

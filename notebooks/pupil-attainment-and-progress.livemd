@@ -1,4 +1,4 @@
-<!-- livebook:{"file_entries":[{"name":"2023-a8-national-estimates.csv","type":"attachment"},{"name":"2023-bep-results.csv","type":"attachment"},{"file":{"file_system_id":"local","file_system_type":"local","path":"/Users/elliot/code/notebooks/files/processed-results.json"},"name":"processed-results.json","type":"file"}]} -->
+<!-- livebook:{"file_entries":[{"name":"2023-bep-results.csv","type":"attachment"},{"file":{"file_system_id":"local","file_system_type":"local","path":"/Users/elliot/code/notebooks/files/processed-results.json"},"name":"processed-results.json","type":"file"}]} -->
 
 # Process pupil attainment and progress
 
@@ -29,7 +29,7 @@ The parser will also normalise all qualification grades over to the GCSE reforme
 The resulting student record is then represented as an elixir map, with atom keys. Each record has only the subjects the student received a grade for, each grade is a floating point number normalised to the GCSE Reformed spec.
 
 ```elixir
-normalised_results = 
+parsed_results = 
   "/Users/elliot/code/school_kit/notebooks/files/2023-bep-results.csv"
   |> SchoolKit.Parser.from_csv()
 ```
@@ -62,7 +62,7 @@ The total attainment 8 is simply calculated by adding together the total value f
 
 ```elixir
 results_with_attainment_8 =
-  normalised_results
+  parsed_results
   |> Enum.map(fn student_record ->
     SchoolKit.Attainment8.calculate_attainment_8(student_record)
   end)
@@ -77,16 +77,14 @@ Progress 8 is not something which students themselves ever receive or think abou
 Like with Attainment 8, the Progress 8 calculations are given by the DfE.
 
 ```elixir
-# Load in the national A8 estimate data. We compare this to the actual results of
-# each student to calculate their Progress 8 scores.
-a8_national_estimates =
-  "/Users/elliot/code/school_kit/notebooks/files/2023-a8-national-estimates.csv"
-  |> SchoolKit.Progress8.load_national_estimates()
+# Pick the cohort year, as this determines the attainment estimates used to calculate
+# the progress 8 scores.
+cohort_year = "2023"
 
 results_with_progress_8 =
   results_with_attainment_8
   |> Enum.map(fn student_record ->
-    SchoolKit.Progress8.calculate_progress_8(student_record, a8_national_estimates)
+    SchoolKit.Progress8.calculate_progress_8(student_record, cohort_year)
   end)
 
 ```
@@ -100,4 +98,4 @@ json_data = Jason.encode!(results_with_progress_8)
 :ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/processed-results.json", json_data)
 ```
 
-<!-- livebook:{"offset":5464,"stamp":{"token":"XCP.616-L-XZW0o2MfuLp7B5Wn8W2r8-1NLx4R7_7lQqwNSGZH_vISDI26uwDHzT8ERdUCa-ZftT3sPZAHrAFJEgGLJQ1zfOQMfHa0pUUA","version":2}} -->
+<!-- livebook:{"offset":5225,"stamp":{"token":"XCP.uvrF0sNVnp29iQB3fgrDQrEsrqwbkKHDP3zy7SaKo1tumN9baPIFJBMcTeBruGFdat9c-akb83M-l_xJ87CBSffu00CvczFQDwXckA","version":2}} -->
