@@ -14,7 +14,7 @@ defmodule SchoolKit.Attainment8.Bucket1 do
     bucket_1_result = %{
       english: english,
       maths: %{subject_key: :maths, grade: subject_results[:maths]},
-      total: Utils.sum_bucket_grades(subject_results[:maths], english[:grade], nil, 2.0)
+      total: Utils.sum_bucket_grades(subject_results[:maths], english[:grade], nil)
     }
 
     Map.put(attainment_8, :bucket_1, bucket_1_result)

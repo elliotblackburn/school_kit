@@ -26,7 +26,7 @@ defmodule SchoolKit.Attainment8.Bucket1Test do
       assert result[:bucket_1][:english] == %{subject_key: :english_language, grade: 7}
       assert result[:bucket_1][:maths] == %{subject_key: :maths, grade: 8}
       # (7 + 8) * 2.0
-      assert result[:bucket_1][:total] == 30.0
+      assert result[:bucket_1][:total] == 15
     end
 
     test "uses the highest grade between English Literature and English Language", %{
@@ -52,7 +52,7 @@ defmodule SchoolKit.Attainment8.Bucket1Test do
       assert result[:bucket_1][:english] == %{subject_key: :english_literature, grade: 6}
       assert result[:bucket_1][:maths] == %{subject_key: :maths, grade: 8}
       # (6 + 8) * 2.0
-      assert result[:bucket_1][:total] == 28.0
+      assert result[:bucket_1][:total] == 14
     end
 
     test "returns 0 total if no English or Maths grades are provided", %{

@@ -16,6 +16,10 @@ defmodule SchoolKit.Progress8 do
   Each bucket total is the sum of each included subjects P8.
   """
 
+  alias SchoolKit.Progress8.Bucket1
+  alias SchoolKit.Progress8.Bucket2
+  alias SchoolKit.Progress8.Bucket3
+
   def calculate_progress_8(%{ks2: ks2} = student_record, _a8_national_estimates) when is_nil(ks2),
     do: Map.put(student_record, :progress_8, nil)
 
@@ -28,148 +32,22 @@ defmodule SchoolKit.Progress8 do
 
     progress_8 =
       %{}
-      |> calculate_progress_8_bucket_1(
+      |> Bucket1.calculate(
         student_record.attainment_8.bucket_1,
-        attainment_estimates
+        attainment_estimates,
+        student_record.subject_results
       )
-      |> calculate_progress_8_bucket_2(
+      |> Bucket2.calculate(
         student_record.attainment_8.bucket_2,
         attainment_estimates
       )
-      |> calculate_progress_8_bucket_3(
+      |> Bucket3.calculate(
         student_record.attainment_8.bucket_3,
         attainment_estimates
       )
       |> calculate_total(student_record)
 
     Map.put(student_record, :progress_8, progress_8)
-  end
-
-  defp calculate_progress_8_bucket_1(
-         progress_8,
-         bucket_attainment,
-         a8_national_estimates
-       ) do
-    english_subject_key = bucket_attainment.english.subject_key
-
-    english_grade = bucket_attainment.english.grade || 0
-
-    english_progress_8 =
-      english_progress_8_calculator(a8_national_estimates, english_grade)
-
-    maths_grade = bucket_attainment.maths.grade || 0
-
-    maths_progress_8 =
-      maths_progress_8_calculator(a8_national_estimates, maths_grade)
-
-    bucket_1_result = %{
-      maths: %{
-        subject_key: :maths,
-        grade: bucket_attainment.maths.grade,
-        progress_8: maths_progress_8
-      },
-      english: %{
-        subject_key: english_subject_key,
-        grade: bucket_attainment.english.grade,
-        progress_8: english_progress_8
-      },
-      total: bucket_attainment.total,
-      # Bucket 1 subjects are double weighted. We do this for the final calculation
-      # rather than on the subjects themselves for clarity.
-      progress_8: (maths_progress_8 + english_progress_8) * 2.0
-    }
-
-    Map.put(progress_8, :bucket_1, bucket_1_result)
-  end
-
-  defp calculate_progress_8_bucket_2(
-         progress_8,
-         bucket_attainment,
-         a8_national_estimates
-       ) do
-    bucket_2_result =
-      calculate_progress_8_for_three_subject_bucket(
-        bucket_attainment,
-        fn subject_grade ->
-          ebacc_progress_8_calculator(a8_national_estimates, subject_grade)
-        end
-      )
-
-    Map.put(progress_8, :bucket_2, bucket_2_result)
-  end
-
-  defp calculate_progress_8_bucket_3(
-         progress_8,
-         bucket_attainment,
-         a8_national_estimates
-       ) do
-    bucket_3_result =
-      calculate_progress_8_for_three_subject_bucket(
-        bucket_attainment,
-        fn subject_grade ->
-          open_progress_8_calculator(a8_national_estimates, subject_grade)
-        end
-      )
-
-    Map.put(progress_8, :bucket_3, bucket_3_result)
-  end
-
-  defp calculate_progress_8_for_three_subject_bucket(
-         bucket_attainment,
-         progress_calculator_fn
-       ) do
-    # TODO: Handle edge case where English Lit or English Lang are picked
-    # for a bucket 3 subject. In this case we will need to re-calculate the progress 8,
-    # and use the Open subject formula where we divide by 3 rather than 2.
-    subject_1_grade = bucket_attainment.subject_1.grade
-
-    subject_1 = %{
-      subject_key: bucket_attainment.subject_1.subject_key,
-      grade: bucket_attainment.subject_1.grade,
-      progress_8: progress_calculator_fn.(subject_1_grade)
-    }
-
-    subject_2_grade = bucket_attainment.subject_2.grade
-
-    subject_2 = %{
-      subject_key: bucket_attainment.subject_2.subject_key,
-      grade: bucket_attainment.subject_2.grade,
-      progress_8: progress_calculator_fn.(subject_2_grade)
-    }
-
-    subject_3_grade = bucket_attainment.subject_3.grade
-
-    subject_3 = %{
-      subject_key: bucket_attainment.subject_3.subject_key,
-      grade: bucket_attainment.subject_3.grade,
-      progress_8: progress_calculator_fn.(subject_3_grade)
-    }
-
-    %{
-      subject_1: subject_1,
-      subject_2: subject_2,
-      subject_3: subject_3,
-      total: bucket_attainment.total,
-      progress_8: subject_1.progress_8 + subject_2.progress_8 + subject_3.progress_8
-    }
-  end
-
-  defp english_progress_8_calculator(a8_national_estimates, subject_grade) do
-    # This is true when the subject is included in Bucket 1, but if it's included in Bucket 3
-    # then the divisor is 3.0 because it's classified as an Open subject in this case.
-    subject_grade - a8_national_estimates.a8_english_estimate / 2.0
-  end
-
-  defp maths_progress_8_calculator(a8_national_estimates, subject_grade) do
-    subject_grade - a8_national_estimates.a8_maths_estimate / 2.0
-  end
-
-  defp ebacc_progress_8_calculator(a8_national_estimates, subject_grade) do
-    subject_grade - a8_national_estimates.a8_EBacc_estimate / 3.0
-  end
-
-  defp open_progress_8_calculator(a8_national_estimates, subject_grade) do
-    subject_grade - a8_national_estimates.a8_open_estimate / 3.0
   end
 
   def calculate_total(progress_8, %{attainment_8: attainment_8} = _student_record) do
