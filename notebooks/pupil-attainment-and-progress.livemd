@@ -94,8 +94,13 @@ results_with_progress_8 =
 Now we've completed all our data cleaning and initial calculations, we can output the data into a JSON file. This will maintain the structure we've put together, and make it easy to load into other notebooks for analysis.
 
 ```elixir
-json_data = Jason.encode!(results_with_progress_8)
+json_data = Jason.encode!(results_with_progress_8, pretty: true)
 :ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/processed-results.json", json_data)
 ```
 
-<!-- livebook:{"offset":5225,"stamp":{"token":"XCP.uvrF0sNVnp29iQB3fgrDQrEsrqwbkKHDP3zy7SaKo1tumN9baPIFJBMcTeBruGFdat9c-akb83M-l_xJ87CBSffu00CvczFQDwXckA","version":2}} -->
+```elixir
+"/Users/elliot/code/school_kit/notebooks/files/2023-bep-results.csv"
+|> SchoolKit.generate_subject_progress_report_from_csv("2023")
+```
+
+<!-- livebook:{"offset":5386,"stamp":{"token":"XCP.oQyG40K072-WRTPXSdxrWSTbG6IShzEvX4Y5QJXibizAkXvqW62I6wPBxVAqOZCPX1sKmuPA2pTKoX9D1wZtBHwH2TZq_rrekcP6Zg","version":2}} -->

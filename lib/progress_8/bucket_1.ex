@@ -58,4 +58,24 @@ defmodule SchoolKit.Progress8.Bucket1 do
     estimate = a8_national_estimates.a8_maths_estimate / 2.0
     (grade - estimate) * 2.0
   end
+
+  @doc """
+  Calculate the progress 8 value for a single subject in bucket 1, returning
+  the unweighted progress value.
+
+  This should be used when working with the subject result outside the context
+  of progress 8 buckets. For example, when generating a report for a single subject.
+
+  To calculate a students actual progress 8 score, use the `calculate` function.
+  """
+  def calculate_single_subject(subject_key, grade, estimates)
+      when subject_key == :english_literature or subject_key == :english_language do
+    estimate = estimates.a8_english_estimate / 2.0
+    grade - estimate
+  end
+
+  def calculate_single_subject(:maths, grade, estimates) do
+    estimate = estimates.a8_maths_estimate / 2.0
+    grade - estimate
+  end
 end

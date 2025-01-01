@@ -22,8 +22,7 @@ defmodule SchoolKit.MixProject do
   defp deps do
     [
       {:csv, "~> 3.2"},
-      {:jason, "~> 1.4"},
-      {:mox, "~> 1.2", only: :test}
+      {:jason, "~> 1.4"}
     ]
   end
 end

@@ -16,4 +16,8 @@ defmodule SchoolKit.Progress8.Bucket2 do
   defp ebacc_progress_8_calculator(a8_national_estimates, subject_grade) do
     subject_grade - a8_national_estimates.a8_EBacc_estimate / 3.0
   end
+
+  def calculate_single_subject(_subject, grade, a8_national_estimates) do
+    ebacc_progress_8_calculator(a8_national_estimates, grade)
+  end
 end

@@ -1,0 +1,111 @@
+<!-- livebook:{"app_settings":{"access_type":"public","slug":"progress-8"}} -->
+
+# Progress 8 - App
+
+```elixir
+app_root = Path.join(__DIR__, "..")
+
+Mix.install(
+  [
+    {:school_kit, path: app_root, env: :dev},
+    {:kino, "~> 0.14"}
+  ],
+  lockfile: Path.join(app_root, "mix.lock")
+)
+```
+
+## Process student results
+
+Select your student result data, and the cohort year. Then hit submit and you'll be able to download the full results data, and browse through a summary.
+
+```elixir
+defmodule StudentSummary do
+  def extract_summary(student) when is_nil(student.progress_8) do
+    %{
+      "name" => student.name,
+      "gender" => student.gender,
+      "SEND" => student[:SEND],
+      "attendance_band" => student.attendance_band || false,
+      "disadvantaged" => student.disadvantaged || false,
+      "pupil_premium" => student.pupil_premium || false,
+      
+      "progress_8" => nil,
+      
+      "english_subject" => nil,
+      "english_progress" => nil,
+      
+      "maths_progress" => nil,
+
+      "bucket_1_progress" => nil,
+      "bucket_2_progress" => nil,
+      "bucket_3_progress" => nil
+    }
+  end
+  def extract_summary(student) do
+    %{
+      "name" => student.name,
+      "gender" => student.gender,
+      "SEND" => student[:SEND],
+      "attendance_band" => student.attendance_band || false,
+      "disadvantaged" => student.disadvantaged || false,
+      "pupil_premium" => student.pupil_premium || false,
+      
+      "progress_8" => Float.round(student.progress_8.total.progress_8, 2),
+      
+      "english_subject" => student.progress_8.bucket_1.english.subject_key,
+      "english_progress" => Float.round(student.progress_8.bucket_1.english.progress_8, 2),
+      
+      "maths_progress" => Float.round(student.progress_8.bucket_1.maths.progress_8, 2),
+
+      "bucket_1_progress" => Float.round(student.progress_8.bucket_1.progress_8, 2),
+      "bucket_2_progress" => Float.round(student.progress_8.bucket_2.progress_8, 2),
+      "bucket_3_progress" => Float.round(student.progress_8.bucket_3.progress_8, 2)
+    }
+  end
+end
+
+form =
+  Kino.Control.form(
+    [
+      cohort_year: Kino.Input.select("Cohort year", [{"2023", "2023"}]),
+      results_file: Kino.Input.file("Results data", accept: ~w(.csv))
+    ],
+    submit: "Submit"
+  )
+
+Kino.listen(form, fn event ->
+  %{
+    data: %{
+      cohort_year: cohort_year,
+      results_file: %{
+        file_ref: file_ref
+      }
+    }
+  } = event
+  
+  results_file_path = Kino.Input.file_path(file_ref)
+
+  progress_8_results = SchoolKit.calculate_cohort_progress_from_csv(results_file_path, cohort_year)
+
+  json_data = Jason.encode!(progress_8_results, pretty: true)
+  Kino.Download.new(
+    fn -> json_data end,
+    filename: "results_data.json",
+    label: "Download result data"
+  )
+  |> Kino.render()
+
+  results_file_path
+  |> SchoolKit.generate_subject_progress_report_from_csv(cohort_year)
+  |> Enum.map(fn {subject, progress} ->
+    %{
+      subject: subject,
+      average_progress: progress
+    }
+  end)
+  |> Kino.DataTable.new(keys: [:subject, :average_progress])
+  |> Kino.render()
+end)
+
+form
+```
