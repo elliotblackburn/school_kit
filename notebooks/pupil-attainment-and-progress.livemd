@@ -1,4 +1,4 @@
-<!-- livebook:{"file_entries":[{"name":"2023-bep-results.csv","type":"attachment"},{"file":{"file_system_id":"local","file_system_type":"local","path":"/Users/elliot/code/notebooks/files/processed-results.json"},"name":"processed-results.json","type":"file"}]} -->
+<!-- livebook:{"file_entries":[{"name":"2023-bep-results.csv","type":"attachment"}]} -->
 
 # Process pupil attainment and progress
 
@@ -30,7 +30,7 @@ The resulting student record is then represented as an elixir map, with atom key
 
 ```elixir
 parsed_results = 
-  "/Users/elliot/code/school_kit/notebooks/files/2023-bep-results.csv"
+  "#{__DIR__}/files/2023-bep-results.csv"
   |> SchoolKit.Parser.from_csv()
 ```
 
@@ -95,12 +95,10 @@ Now we've completed all our data cleaning and initial calculations, we can outpu
 
 ```elixir
 json_data = Jason.encode!(results_with_progress_8, pretty: true)
-:ok = File.write!("/Users/elliot/code/school_kit/notebooks/files/processed-results.json", json_data)
+:ok = File.write!("#{__DIR__}/files/processed-results.json", json_data)
 ```
 
 ```elixir
-"/Users/elliot/code/school_kit/notebooks/files/2023-bep-results.csv"
+"#{__DIR__}/files/2023-bep-results.csv"
 |> SchoolKit.generate_subject_progress_report_from_csv("2023")
 ```
-
-<!-- livebook:{"offset":5386,"stamp":{"token":"XCP.oQyG40K072-WRTPXSdxrWSTbG6IShzEvX4Y5QJXibizAkXvqW62I6wPBxVAqOZCPX1sKmuPA2pTKoX9D1wZtBHwH2TZq_rrekcP6Zg","version":2}} -->
