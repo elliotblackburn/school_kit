@@ -1,5 +1,3 @@
-<!-- livebook:{"file_entries":[{"name":"2023-bep-results.csv","type":"attachment"}]} -->
-
 # Process pupil attainment and progress
 
 ```elixir
