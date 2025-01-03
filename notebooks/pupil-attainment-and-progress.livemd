@@ -3,15 +3,39 @@
 # Process pupil attainment and progress
 
 ```elixir
-app_root = Path.join(__DIR__, "..")
-
 Mix.install(
   [
-    {:school_kit, path: app_root, env: :dev},
+    {:kino, "~> 0.14"},
+    {:school_kit, path: Path.join(__DIR__, ".."), env: :dev},
+    # {:school_kit, path: "/home/elliot/code/school_kit", env: :dev},
   ],
-  # config_path: Path.join(app_root, "config/config.exs"),
-  lockfile: Path.join(app_root, "mix.lock")
+  # config_path: :school_kit,
+  lockfile: :school_kit
 )
+```
+
+## Select input data
+
+```elixir
+import Kino.Shorts
+
+cohort_year = read_select("Cohort year", [{nil, "Select cohort year"}, {"2023", "2023"}])
+
+if cohort_year == nil do
+  Kino.interrupt!(:error, "You must select a cohort year")
+else
+  :ok
+end
+```
+
+```elixir
+data_file_input = read_file("Results data", accept: ~w(.csv))
+
+data_file = if data_file_input == nil do
+  Kino.interrupt!(:error, "You must select an input file")
+else
+  Kino.Input.file_path(data_file_input.file_ref)
+end
 ```
 
 ## Load and parse data
@@ -29,8 +53,8 @@ The parser will also normalise all qualification grades over to the GCSE reforme
 The resulting student record is then represented as an elixir map, with atom keys. Each record has only the subjects the student received a grade for, each grade is a floating point number normalised to the GCSE Reformed spec.
 
 ```elixir
-parsed_results = 
-  "#{__DIR__}/files/2023-bep-results.csv"
+parsed_results =
+  data_file
   |> SchoolKit.Parser.from_csv()
 ```
 
@@ -66,6 +90,9 @@ results_with_attainment_8 =
   |> Enum.map(fn student_record ->
     SchoolKit.Attainment8.calculate_attainment_8(student_record)
   end)
+
+IO.puts("Attainment 8 calculated successfully, displaying first student record as an example")
+Kino.Tree.new(List.first(results_with_attainment_8))
 ```
 
 ## Progress 8 - The amount of progress a student made during KS3
@@ -77,28 +104,51 @@ Progress 8 is not something which students themselves ever receive or think abou
 Like with Attainment 8, the Progress 8 calculations are given by the DfE.
 
 ```elixir
-# Pick the cohort year, as this determines the attainment estimates used to calculate
-# the progress 8 scores.
-cohort_year = "2023"
-
 results_with_progress_8 =
   results_with_attainment_8
   |> Enum.map(fn student_record ->
     SchoolKit.Progress8.calculate_progress_8(student_record, cohort_year)
   end)
 
+IO.puts("Progress 8 calculated successfully, displaying first student record as an example")
+Kino.Tree.new(List.first(results_with_progress_8))
 ```
 
-## Write results to a file
+## Results
 
 Now we've completed all our data cleaning and initial calculations, we can output the data into a JSON file. This will maintain the structure we've put together, and make it easy to load into other notebooks for analysis.
 
 ```elixir
-json_data = Jason.encode!(results_with_progress_8, pretty: true)
-:ok = File.write!("#{__DIR__}/files/processed-results.json", json_data)
+Kino.Download.new(
+  fn ->
+    Jason.encode!(results_with_progress_8, pretty: true)
+  end,
+  filename: "results_data.json",
+  label: "Download result data"
+)
 ```
 
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Summary Reports
+
 ```elixir
-"#{__DIR__}/files/2023-bep-results.csv"
-|> SchoolKit.generate_subject_progress_report_from_csv("2023")
+data_file
+|> SchoolKit.generate_subject_progress_report_from_csv(cohort_year)
+|> Kino.DataTable.new(
+  name: "Summary per Subject",
+  keys: [
+    "Subject",
+    "Attainment Avg",
+    "Progress Avg",
+    "Male Attainment Avg",
+    "Male Progress Avg",
+    "Female Attainment Avg",
+    "Female Progress Avg",
+    "Disadvantaged Attainment Avg",
+    "Disadvantaged Progress Avg",
+    "SEND Attainment Avg",
+    "SEND Progress Avg"
+  ]
+)
 ```

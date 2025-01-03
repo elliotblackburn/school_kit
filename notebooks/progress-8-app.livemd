@@ -1,24 +1,35 @@
 <!-- livebook:{"app_settings":{"access_type":"public","slug":"progress-8"}} -->
 
-# Progress 8 - App
+# Subject Performance
 
 ```elixir
-app_root = Path.join(__DIR__, "..")
+#school_kit_path = Path.join(__DIR__, "..")
+school_kit_path = "/home/elliot/code/school_kit"
 
 Mix.install(
   [
-    {:school_kit, path: app_root, env: :dev},
+    {:school_kit, path: school_kit_path},
     {:kino, "~> 0.14"}
-  ],
-  lockfile: Path.join(app_root, "mix.lock")
+  ]#,
+  #config_path: :school_kit,
+  #lockfile: :school_kit
 )
 ```
 
-## Process student results
-
-Select your student result data, and the cohort year. Then hit submit and you'll be able to download the full results data, and browse through a summary.
+## Section
 
 ```elixir
+"""
+This application calculates a high-level summary report, broken down by each subject. You can provide your input data as a CSV with the correct headers and it will produce the report.
+
+The report uses a normalised attainment grade for both the Attainment and Progress 8 calculations.
+"""
+|> Kino.Markdown.new()
+```
+
+```elixir
+Kino.render(Kino.Markdown.new("## Data entry"))
+
 form =
   Kino.Control.form(
     [
@@ -50,23 +61,39 @@ Kino.listen(form, fn event ->
   )
   |> Kino.render()
 
+  """
+  ## Subjects Summary Report
+  This report shows a high level summary of each subjects performance based on the data you provided.
+
+  The report focuses on the mean-average of attainment and progress, with a breakdown by some key dimensions.
+  """
+  |> Kino.Markdown.new()
+  |> Kino.render()
+  
   results_file_path
   |> SchoolKit.generate_subject_progress_report_from_csv(cohort_year)
-  |> Kino.DataTable.new(keys: [
-    :subject,
-    :total_attainment_average,
-    :total_progress_average,
-    :male_attainment_average,
-    :male_progress_average,
-    :female_attainment_average,
-    :female_progress_average,
-    :disadvantaged_attainment_average,
-    :disadvantaged_progress_average,
-    :send_attainment_average,
-    :send_progress_average
-  ])
+  |> Kino.DataTable.new(
+    name: "Summary per Subject",
+    keys: [
+      "Subject",
+      "Attainment Avg",
+      "Progress Avg",
+      "Male Attainment Avg",
+      "Male Progress Avg",
+      "Female Attainment Avg",
+      "Female Progress Avg",
+      "Disadvantaged Attainment Avg",
+      "Disadvantaged Progress Avg",
+      "SEND Attainment Avg",
+      "SEND Progress Avg"
+    ]
+  )
   |> Kino.render()
 end)
 
 form
+```
+
+```elixir
+Kino.Markdown.new("Hello")
 ```

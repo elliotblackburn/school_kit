@@ -78,15 +78,8 @@ defmodule SchoolKit.SubjectPerformance do
   end
 
   defp calculate_subject_report({subject_key, stat_records}) do
-    total_attainment_average =
-      stat_records
-      |> average(:attainment)
-      |> Float.round(2)
-
-    total_progress_average =
-      stat_records
-      |> average(:progress)
-      |> Float.round(2)
+    {total_attainment_average, total_progress_average} =
+      attribute_averages(stat_records, fn _ -> true end)
 
     {male_attainment_average, male_progress_average} =
       attribute_averages(stat_records, fn record -> record.attributes.gender == :male end)
@@ -101,17 +94,17 @@ defmodule SchoolKit.SubjectPerformance do
       attribute_averages(stat_records, fn record -> record.attributes.send != nil end)
 
     %{
-      subject: subject_key,
-      total_attainment_average: total_attainment_average,
-      total_progress_average: total_progress_average,
-      male_attainment_average: male_attainment_average,
-      male_progress_average: male_progress_average,
-      female_attainment_average: female_attainment_average,
-      female_progress_average: female_progress_average,
-      disadvantaged_attainment_average: disadvantaged_attainment_average,
-      disadvantaged_progress_average: disadvantaged_progress_average,
-      send_attainment_average: send_attainment_average,
-      send_progress_average: send_progress_average
+      "Subject" => subject_atom_to_str(subject_key),
+      "Attainment Avg" => total_attainment_average,
+      "Progress Avg" => total_progress_average,
+      "Male Attainment Avg" => male_attainment_average,
+      "Male Progress Avg" => male_progress_average,
+      "Female Attainment Avg" => female_attainment_average,
+      "Female Progress Avg" => female_progress_average,
+      "Disadvantaged Attainment Avg" => disadvantaged_attainment_average,
+      "Disadvantaged Progress Avg" => disadvantaged_progress_average,
+      "SEND Attainment Avg" => send_attainment_average,
+      "SEND Progress Avg" => send_progress_average
     }
   end
 
@@ -142,5 +135,13 @@ defmodule SchoolKit.SubjectPerformance do
       |> Enum.sum()
 
     sum / length(collection)
+  end
+
+  defp subject_atom_to_str(subject_atom) do
+    subject_atom
+    |> Atom.to_string()
+    |> String.split("_")
+    |> Enum.map(&String.capitalize/1)
+    |> Enum.join(" ")
   end
 end
