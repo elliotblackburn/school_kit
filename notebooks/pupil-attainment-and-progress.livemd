@@ -6,11 +6,12 @@
 Mix.install(
   [
     {:kino, "~> 0.14"},
-    {:school_kit, path: Path.join(__DIR__, ".."), env: :dev},
+    {:school_kit, github: "elliotblackburn/school_kit"}
+    # {:school_kit, path: Path.join(__DIR__, ".."), env: :dev},
     # {:school_kit, path: "/home/elliot/code/school_kit", env: :dev},
-  ],
+  ]
   # config_path: :school_kit,
-  lockfile: :school_kit
+  # lockfile: :school_kit
 )
 ```
 
