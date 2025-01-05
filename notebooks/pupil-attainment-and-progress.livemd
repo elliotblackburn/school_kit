@@ -1,40 +1,51 @@
+<!-- livebook:{"file_entries":[{"name":"input-data-template.csv","type":"attachment"}]} -->
+
 # Process pupil attainment and progress
 
 ```elixir
 Mix.install(
   [
     {:kino, "~> 0.14"},
-    {:school_kit, github: "elliotblackburn/school_kit"}
-    # {:school_kit, path: Path.join(__DIR__, ".."), env: :dev},
-    # {:school_kit, path: "/home/elliot/code/school_kit", env: :dev},
-  ]
+    {:vega_lite, "~> 0.1.11"},
+    {:kino_vega_lite, "~> 0.1.13"},
+    # {:school_kit, github: "elliotblackburn/school_kit"}
+    {:school_kit, path: Path.join(__DIR__, ".."), env: :dev},
+  ],
   # config_path: :school_kit,
-  # lockfile: :school_kit
+  lockfile: :school_kit
 )
+
+alias VegaLite, as: Vl
 ```
 
 ## Select input data
+
+To get started, we need to select both the source results data and the results year of the cohort.
+
+It's important to select the correct cohort year, as this will determine which DfE national estimates are selected. If you're analysing mock data, you may wish to run against different cohort years to get a feel for the ball-park range of your results.
+
+Your results data CSV must contain the appropriately named column headers, otherwise subjects may be missed. You can find a template CSV in the files attached to this notebook.
 
 ```elixir
 import Kino.Shorts
 
 cohort_year = read_select("Cohort year", [{nil, "Select cohort year"}, {"2023", "2023"}])
 
+data_file_input = read_file("Results data", accept: ~w(.csv))
+
 if cohort_year == nil do
   Kino.interrupt!(:error, "You must select a cohort year")
 else
   :ok
 end
-```
-
-```elixir
-data_file_input = read_file("Results data", accept: ~w(.csv))
 
 data_file = if data_file_input == nil do
   Kino.interrupt!(:error, "You must select an input file")
 else
   Kino.Input.file_path(data_file_input.file_ref)
 end
+
+:ok
 ```
 
 ## Load and parse data
@@ -90,17 +101,15 @@ results_with_attainment_8 =
     SchoolKit.Attainment8.calculate_attainment_8(student_record)
   end)
 
-IO.puts("Attainment 8 calculated successfully, displaying first student record as an example")
+Kino.Markdown.new("**Attainment 8 calculated, displaying first student record as an example**")
+|> Kino.render()
+
 Kino.Tree.new(List.first(results_with_attainment_8))
 ```
 
-## Progress 8 - The amount of progress a student made during KS3
+## Progress 8 - The amount of progress a student made during KS4
 
-A students Progress 8 is a representation of how much progress a student made between KS2 and the end of KS3. It is calculated using a lookup data set published by the DfE for each cohort after they've taken their final GCSE exams. This data set defines an expected progress of a student in a subject given a particular KS2 result.
-
-Progress 8 is not something which students themselves ever receive or think about. It is purely to help assess the performance of a school.
-
-Like with Attainment 8, the Progress 8 calculations are given by the DfE.
+A students Progress 8 is a representation of how much progress a student made between KS2 and the end of KS4. It is calculated using a lookup data set published by the DfE for each cohort after they've taken their final GCSE exams. This data set defines an expected progress of a student in a subject given a particular KS2 result.
 
 ```elixir
 results_with_progress_8 =
@@ -109,15 +118,12 @@ results_with_progress_8 =
     SchoolKit.Progress8.calculate_progress_8(student_record, cohort_year)
   end)
 
-IO.puts("Progress 8 calculated successfully, displaying first student record as an example")
+Kino.Markdown.new("**Progress 8 calculated, displaying first student record as an example**")
+|> Kino.render()
+
 Kino.Tree.new(List.first(results_with_progress_8))
-```
+|> Kino.render()
 
-## Results
-
-Now we've completed all our data cleaning and initial calculations, we can output the data into a JSON file. This will maintain the structure we've put together, and make it easy to load into other notebooks for analysis.
-
-```elixir
 Kino.Download.new(
   fn ->
     Jason.encode!(results_with_progress_8, pretty: true)
@@ -127,27 +133,70 @@ Kino.Download.new(
 )
 ```
 
-<!-- livebook:{"branch_parent_index":0} -->
-
-## Summary Reports
+## Subject performance report
 
 ```elixir
-data_file
-|> SchoolKit.generate_subject_progress_report_from_csv(cohort_year)
-|> Kino.DataTable.new(
-  name: "Summary per Subject",
-  keys: [
-    "Subject",
-    "Attainment Avg",
-    "Progress Avg",
-    "Male Attainment Avg",
-    "Male Progress Avg",
-    "Female Attainment Avg",
-    "Female Progress Avg",
-    "Disadvantaged Attainment Avg",
-    "Disadvantaged Progress Avg",
-    "SEND Attainment Avg",
-    "SEND Progress Avg"
-  ]
-)
+performance_by_subject =
+  data_file
+  |> SchoolKit.generate_subject_progress_report_from_csv(cohort_year)
+  |> Kino.DataTable.new(
+    name: "Summary per Subject",
+    keys: [
+      "Subject",
+      "Attainment Avg",
+      "Progress Avg",
+      "Male Attainment Avg",
+      "Male Progress Avg",
+      "Female Attainment Avg",
+      "Female Progress Avg",
+      "Disadvantaged Attainment Avg",
+      "Disadvantaged Progress Avg",
+      "SEND Attainment Avg",
+      "SEND Progress Avg"
+    ]
+  )
+
+reduced_student_record =
+  results_with_progress_8
+  |> Enum.reject(fn student -> student.ks2 == nil or student.progress_8 == nil end)
+  |> Enum.reject(fn student -> student.attendance_band == "" end)
+  |> Enum.map(fn student ->
+    %{
+      attendance_band: student.attendance_band,
+      school: student.school,
+      attainment_8: student.attainment_8.total.total_score,
+      progress_8: student.progress_8.total.progress_8,
+    }
+  end)
+
+progress_by_attendance =
+  Vl.new(title: "Median, Min, and Max values of Students Progress 8 by Attendance", width: 600, height: 400)
+  |> Vl.data_from_values(reduced_student_record)
+  |> Vl.mark(:boxplot, extent: "min-max")
+  |> Vl.encode_field(:y, "progress_8", title: "Progress 8 Score", type: :quantitative)
+  |> Vl.encode_field(:x, "attendance_band", title: "Attendance Band", type: :nominal)
+  |> Kino.VegaLite.new()
+
+attainment_by_school =
+  Vl.new(title: "Median, Min, and Max values of Students Attainment 8 by School", width: 600, height: 400)
+  |> Vl.data_from_values(reduced_student_record)
+  |> Vl.mark(:boxplot, extent: "min-max")
+  |> Vl.encode_field(:y, "attainment_8", title: "Attainment 8 Score", type: :quantitative)
+  |> Vl.encode_field(:x, "school", title: "School", type: :nominal)
+  |> Kino.VegaLite.new()
+
+progress_by_school =
+  Vl.new(title: "Median, Min, and Max values of Students Progress 8 by School", width: 600, height: 400)
+  |> Vl.data_from_values(reduced_student_record)
+  |> Vl.mark(:boxplot, extent: "min-max")
+  |> Vl.encode_field(:y, "progress_8", title: "Progress 8 Score", type: :quantitative)
+  |> Vl.encode_field(:x, "school", title: "School", type: :nominal)
+  |> Kino.VegaLite.new()
+
+Kino.Layout.tabs([
+  {"Headlines Per-Subject", performance_by_subject},
+  {"Attainment Spread by School", attainment_by_school},
+  {"Progress Spread by School", progress_by_school},
+  {"Progress Spread by Attendance", progress_by_attendance}
+])
 ```
