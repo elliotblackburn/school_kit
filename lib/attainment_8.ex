@@ -53,7 +53,21 @@ defmodule SchoolKit.Attainment8 do
   alias SchoolKit.Attainment8.Bucket2
   alias SchoolKit.Attainment8.Bucket3
 
-  def calculate_attainment_8(%{subject_results: subject_results} = student_record) do
+  defmodule StudentRecord do
+    defstruct [
+      :name,
+      :school,
+      :gender,
+      :pupil_premium,
+      :disadvantaged,
+      :SEND,
+      :attendance_band,
+      :ks2,
+      :subject_results
+    ]
+  end
+
+  def calculate_attainment_8(%StudentRecord{subject_results: subject_results} = student_record) do
     attainment_8 =
       %{}
       |> Bucket1.calculate(subject_results)
@@ -61,7 +75,7 @@ defmodule SchoolKit.Attainment8 do
       |> Bucket3.calculate(subject_results)
       |> calculate_total()
 
-    Map.put(student_record, :attainment_8, attainment_8)
+    %StudentRecord{student_record | attainment_8: attainment_8}
   end
 
   def calculate_total(attainment_8) do

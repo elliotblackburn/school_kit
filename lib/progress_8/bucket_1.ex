@@ -1,4 +1,8 @@
 defmodule SchoolKit.Progress8.Bucket1 do
+  defmodule Progress8Bucket1Result do
+    defstruct [:maths, :english, :total, :progress_8]
+  end
+
   def calculate(progress_8, bucket_attainment, a8_national_estimates, all_subject_results) do
     english_subject_key = bucket_attainment.english.subject_key
 
@@ -16,7 +20,7 @@ defmodule SchoolKit.Progress8.Bucket1 do
     maths_progress_8 =
       maths_progress_8_calculator(a8_national_estimates, maths_grade)
 
-    bucket_1_result = %{
+    bucket_1_result = %Progress8Bucket1Result{
       maths: %{
         subject_key: :maths,
         grade: bucket_attainment.maths.grade,

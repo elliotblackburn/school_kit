@@ -1,6 +1,8 @@
 defmodule SchoolKit.Parser.StudentRecordParser do
+  alias SchoolKit.Attainment8.StudentRecord
+
   def parse_student_record(record) do
-    %{
+    %StudentRecord{
       name: record["Surname Forename"],
       school: record["School"],
       gender: parse_gender(record["Gender"]),

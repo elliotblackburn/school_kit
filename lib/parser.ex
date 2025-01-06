@@ -1,6 +1,7 @@
 defmodule SchoolKit.Parser do
   alias SchoolKit.Parser.StudentRecordParser
   alias SchoolKit.Parser.GradeParser
+  alias SchoolKit.Attainment8.StudentRecord
 
   def from_csv(csv_path) do
     raw_results =
@@ -61,7 +62,7 @@ defmodule SchoolKit.Parser do
           end
         end)
 
-      Map.put(student_data, :subject_results, subject_results)
+      %StudentRecord{student_data | subject_results: subject_results}
     end)
   end
 end

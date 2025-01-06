@@ -8,6 +8,10 @@ defmodule SchoolKit.Attainment8.Bucket3 do
   alias SchoolKit.Subjects
   alias SchoolKit.Attainment8.Utils
 
+  defmodule Bucket3Result do
+    defstruct [:subject_1, :subject_2, :subject_3, :total]
+  end
+
   def calculate(attainment_8, subject_results) do
     remaining_english_subject =
       case attainment_8 do
@@ -36,7 +40,7 @@ defmodule SchoolKit.Attainment8.Bucket3 do
     {subject_1, subject_2, subject_3} =
       Utils.get_top_three_subjects(subject_results, available_bucket_3_subjects)
 
-    bucket_3_result = %{
+    bucket_3_result = %Bucket3Result{
       subject_1: subject_1,
       subject_2: subject_2,
       subject_3: subject_3,

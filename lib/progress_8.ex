@@ -20,11 +20,12 @@ defmodule SchoolKit.Progress8 do
   alias SchoolKit.Progress8.Bucket1
   alias SchoolKit.Progress8.Bucket2
   alias SchoolKit.Progress8.Bucket3
+  alias SchoolKit.Attainment8.StudentRecord
 
-  def calculate_progress_8(%{ks2: ks2} = student_record, _cohort_year) when is_nil(ks2),
+  def calculate_progress_8(%StudentRecord{ks2: ks2} = student_record, _cohort_year) when is_nil(ks2),
     do: Map.put(student_record, :progress_8, nil)
 
-  def calculate_progress_8(student_record, cohort_year) do
+  def calculate_progress_8(%StudentRecord{} = student_record, cohort_year) do
     student_attainment_estimates =
       NationalEstimates.get_national_estimates(cohort_year, student_record.ks2.average_score)
 
@@ -48,7 +49,7 @@ defmodule SchoolKit.Progress8 do
     Map.put(student_record, :progress_8, progress_8)
   end
 
-  def calculate_total(progress_8, %{attainment_8: attainment_8} = _student_record) do
+  def calculate_total(progress_8, %StudentRecord{attainment_8: attainment_8} = _student_record) do
     total = %{
       total_score: attainment_8.total.total_score,
       average_score: attainment_8.total.average_score,

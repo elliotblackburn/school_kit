@@ -8,10 +8,14 @@ defmodule SchoolKit.Attainment8.Bucket1 do
 
   alias SchoolKit.Attainment8.Utils
 
+  defmodule Bucket1Result do
+    defstruct [:english, :maths, :total]
+  end
+
   def calculate(attainment_8, subject_results) do
     english = Utils.get_higher_grade(subject_results, :english_literature, :english_language)
 
-    bucket_1_result = %{
+    bucket_1_result = %Bucket1Result{
       english: english,
       maths: %{subject_key: :maths, grade: subject_results[:maths]},
       total: Utils.sum_bucket_grades(subject_results[:maths], english[:grade], nil)

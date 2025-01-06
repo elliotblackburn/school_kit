@@ -8,6 +8,10 @@ defmodule SchoolKit.Attainment8.Bucket2 do
   alias SchoolKit.Subjects
   alias SchoolKit.Attainment8.Utils
 
+  defmodule Bucket2Result do
+    defstruct [:subject_1, :subject_2, :subject_3, :total]
+  end
+
   def calculate(attainment_8, subject_results) do
     {subject_1, subject_2, subject_3} =
       Utils.get_top_three_subjects(
@@ -15,7 +19,7 @@ defmodule SchoolKit.Attainment8.Bucket2 do
         Subjects.bucket_2_subjects()
       )
 
-    bucket_2_result = %{
+    bucket_2_result = %Bucket2Result{
       subject_1: subject_1,
       subject_2: subject_2,
       subject_3: subject_3,
