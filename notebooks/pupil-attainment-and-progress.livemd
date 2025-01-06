@@ -133,29 +133,11 @@ Kino.Download.new(
 )
 ```
 
-## Subject performance report
+## Trust performance headlines
+
+These are the performance headline numbers and graphs for the entire multi-academy trust. If your data is only from a single school, these may not be relevant to you.
 
 ```elixir
-performance_by_subject =
-  data_file
-  |> SchoolKit.generate_subject_progress_report_from_csv(cohort_year)
-  |> Kino.DataTable.new(
-    name: "Summary per Subject",
-    keys: [
-      "Subject",
-      "Attainment Avg",
-      "Progress Avg",
-      "Male Attainment Avg",
-      "Male Progress Avg",
-      "Female Attainment Avg",
-      "Female Progress Avg",
-      "Disadvantaged Attainment Avg",
-      "Disadvantaged Progress Avg",
-      "SEND Attainment Avg",
-      "SEND Progress Avg"
-    ]
-  )
-
 reduced_student_record =
   results_with_progress_8
   |> Enum.reject(fn student -> student.ks2 == nil or student.progress_8 == nil end)
@@ -194,9 +176,40 @@ progress_by_school =
   |> Kino.VegaLite.new()
 
 Kino.Layout.tabs([
-  {"Headlines Per-Subject", performance_by_subject},
+  {"Progress Spread by Attendance", progress_by_attendance},
   {"Attainment Spread by School", attainment_by_school},
-  {"Progress Spread by School", progress_by_school},
-  {"Progress Spread by Attendance", progress_by_attendance}
+  {"Progress Spread by School", progress_by_school}
 ])
+```
+
+## School performance headlines
+
+These are the performance headline numbers and graphs for each school present in the data set.
+
+```elixir
+# TODO
+```
+
+## Subject performance report
+
+```elixir
+performance_by_subject =
+  data_file
+  |> SchoolKit.generate_subject_progress_report_from_csv(cohort_year)
+  |> Kino.DataTable.new(
+    name: "Summary per Subject",
+    keys: [
+      "Subject",
+      "Attainment Avg",
+      "Progress Avg",
+      "Male Attainment Avg",
+      "Male Progress Avg",
+      "Female Attainment Avg",
+      "Female Progress Avg",
+      "Disadvantaged Attainment Avg",
+      "Disadvantaged Progress Avg",
+      "SEND Attainment Avg",
+      "SEND Progress Avg"
+    ]
+  )
 ```
