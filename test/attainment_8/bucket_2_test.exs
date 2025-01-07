@@ -25,11 +25,23 @@ defmodule SchoolKit.Attainment8.Bucket2Test do
     } do
       result = Bucket2.calculate(attainment_8, subject_results)
 
-      assert result[:bucket_2][:subject_1] == %{subject_key: :science_physics, grade: 9}
-      assert result[:bucket_2][:subject_2] == %{subject_key: :history, grade: 8}
-      assert result[:bucket_2][:subject_3] == %{subject_key: :geography, grade: 7}
+      assert result.bucket_2.subject_1 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :science_physics,
+               grade: 9
+             }
+
+      assert result.bucket_2.subject_2 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :history,
+               grade: 8
+             }
+
+      assert result.bucket_2.subject_3 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :geography,
+               grade: 7
+             }
+
       # 9 + 8 + 7
-      assert result[:bucket_2][:total] == 24
+      assert result.bucket_2.total == 24
     end
 
     test "handles less than 3 EBacc grades", %{
@@ -40,11 +52,23 @@ defmodule SchoolKit.Attainment8.Bucket2Test do
 
       result = Bucket2.calculate(attainment_8, subject_results)
 
-      assert result[:bucket_2][:subject_1] == %{subject_key: :science_physics, grade: 9}
-      assert result[:bucket_2][:subject_2] == %{subject_key: :history, grade: 8}
-      assert result[:bucket_2][:subject_3] == %{subject_key: :empty, grade: 0}
+      assert result.bucket_2.subject_1 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :science_physics,
+               grade: 9
+             }
+
+      assert result.bucket_2.subject_2 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :history,
+               grade: 8
+             }
+
+      assert result.bucket_2.subject_3 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :empty,
+               grade: 0
+             }
+
       # 9 + 8
-      assert result[:bucket_2][:total] == 17
+      assert result.bucket_2.total == 17
     end
 
     test "returns 0 total if no EBacc grades are provided", %{attainment_8: attainment_8} do
@@ -52,10 +76,22 @@ defmodule SchoolKit.Attainment8.Bucket2Test do
 
       result = Bucket2.calculate(attainment_8, subject_results)
 
-      assert result[:bucket_2][:subject_1] == %{subject_key: :empty, grade: 0}
-      assert result[:bucket_2][:subject_2] == %{subject_key: :empty, grade: 0}
-      assert result[:bucket_2][:subject_3] == %{subject_key: :empty, grade: 0}
-      assert result[:bucket_2][:total] == 0.0
+      assert result.bucket_2.subject_1 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :empty,
+               grade: 0
+             }
+
+      assert result.bucket_2.subject_2 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :empty,
+               grade: 0
+             }
+
+      assert result.bucket_2.subject_3 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :empty,
+               grade: 0
+             }
+
+      assert result.bucket_2.total == 0.0
     end
   end
 end

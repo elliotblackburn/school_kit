@@ -1,5 +1,5 @@
 defmodule SchoolKit.Parser.StudentRecordParser do
-  alias SchoolKit.Attainment8.StudentRecord
+  alias SchoolKit.StudentRecord
 
   def parse_student_record(record) do
     %StudentRecord{

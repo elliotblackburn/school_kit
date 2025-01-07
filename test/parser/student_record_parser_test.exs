@@ -17,7 +17,7 @@ defmodule SchoolKit.Parser.StudentRecordParserTest do
         "KS2 Maths Scaled Score" => "120.2"
       }
 
-      expected = %{
+      expected = %SchoolKit.StudentRecord{
         name: "Doe John",
         school: "Central High",
         gender: :male,
@@ -29,7 +29,10 @@ defmodule SchoolKit.Parser.StudentRecordParserTest do
           reading_score: 110.5,
           maths_score: 120.2,
           average_score: 115.35
-        }
+        },
+        attainment_8: nil,
+        progress_8: nil,
+        subject_results: nil
       }
 
       assert StudentRecordParser.parse_student_record(record) == expected
@@ -139,7 +142,7 @@ defmodule SchoolKit.Parser.StudentRecordParserTest do
     test "returns all nil for empty input map" do
       record = %{}
 
-      expected = %{
+      expected = %SchoolKit.StudentRecord{
         name: nil,
         school: nil,
         gender: nil,
@@ -147,7 +150,10 @@ defmodule SchoolKit.Parser.StudentRecordParserTest do
         disadvantaged: nil,
         SEND: nil,
         attendance_band: nil,
-        ks2: nil
+        ks2: nil,
+        attainment_8: nil,
+        progress_8: nil,
+        subject_results: nil
       }
 
       assert StudentRecordParser.parse_student_record(record) == expected

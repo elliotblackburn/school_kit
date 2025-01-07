@@ -37,11 +37,23 @@ defmodule SchoolKit.Attainment8.Bucket3Test do
     } do
       result = Bucket3.calculate(attainment_8, subject_results)
 
-      assert result[:bucket_3][:subject_1] == %{subject_key: :science_biology, grade: 9}
-      assert result[:bucket_3][:subject_2] == %{subject_key: :science_chemistry, grade: 8}
-      assert result[:bucket_3][:subject_3] == %{subject_key: :music, grade: 7}
+      assert result.bucket_3.subject_1 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :science_biology,
+               grade: 9
+             }
+
+      assert result.bucket_3.subject_2 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :science_chemistry,
+               grade: 8
+             }
+
+      assert result.bucket_3.subject_3 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :music,
+               grade: 7
+             }
+
       # 9 + 8 + 6
-      assert result[:bucket_3][:total] == 24
+      assert result.bucket_3.total == 24
     end
 
     test "handles case when no English is left over from Bucket 1", %{
@@ -55,11 +67,23 @@ defmodule SchoolKit.Attainment8.Bucket3Test do
 
       result = Bucket3.calculate(attainment_8, subject_results)
 
-      assert result[:bucket_3][:subject_1] == %{subject_key: :science_biology, grade: 9}
-      assert result[:bucket_3][:subject_2] == %{subject_key: :science_chemistry, grade: 8}
-      assert result[:bucket_3][:subject_3] == %{subject_key: :music, grade: 7}
+      assert result.bucket_3.subject_1 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :science_biology,
+               grade: 9
+             }
+
+      assert result.bucket_3.subject_2 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :science_chemistry,
+               grade: 8
+             }
+
+      assert result.bucket_3.subject_3 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :music,
+               grade: 7
+             }
+
       # 9 + 8 + 6
-      assert result[:bucket_3][:total] == 24
+      assert result.bucket_3.total == 24
     end
 
     test "handles fewer than three available subjects", %{
@@ -70,11 +94,23 @@ defmodule SchoolKit.Attainment8.Bucket3Test do
 
       result = Bucket3.calculate(attainment_8, subject_results)
 
-      assert result[:bucket_3][:subject_1] == %{subject_key: :science_biology, grade: 9}
-      assert result[:bucket_3][:subject_2] == %{subject_key: :empty, grade: 0}
-      assert result[:bucket_3][:subject_3] == %{subject_key: :empty, grade: 0}
+      assert result.bucket_3.subject_1 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :science_biology,
+               grade: 9
+             }
+
+      assert result.bucket_3.subject_2 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :empty,
+               grade: 0
+             }
+
+      assert result.bucket_3.subject_3 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :empty,
+               grade: 0
+             }
+
       # Only science_biology grade
-      assert result[:bucket_3][:total] == 9
+      assert result.bucket_3.total == 9
     end
 
     test "returns 0 total if no subjects are available", %{attainment_8: attainment_8} do
@@ -82,10 +118,22 @@ defmodule SchoolKit.Attainment8.Bucket3Test do
 
       result = Bucket3.calculate(attainment_8, subject_results)
 
-      assert result[:bucket_3][:subject_1] == %{subject_key: :empty, grade: 0}
-      assert result[:bucket_3][:subject_2] == %{subject_key: :empty, grade: 0}
-      assert result[:bucket_3][:subject_3] == %{subject_key: :empty, grade: 0}
-      assert result[:bucket_3][:total] == 0.0
+      assert result.bucket_3.subject_1 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :empty,
+               grade: 0
+             }
+
+      assert result.bucket_3.subject_2 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :empty,
+               grade: 0
+             }
+
+      assert result.bucket_3.subject_3 == %SchoolKit.Attainment8.Utils.SubjectGrade{
+               subject_key: :empty,
+               grade: 0
+             }
+
+      assert result.bucket_3.total == 0.0
     end
   end
 end

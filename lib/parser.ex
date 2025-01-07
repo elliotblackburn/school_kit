@@ -1,7 +1,7 @@
 defmodule SchoolKit.Parser do
+  alias SchoolKit.StudentRecord
   alias SchoolKit.Parser.StudentRecordParser
   alias SchoolKit.Parser.GradeParser
-  alias SchoolKit.Attainment8.StudentRecord
 
   def from_csv(csv_path) do
     raw_results =

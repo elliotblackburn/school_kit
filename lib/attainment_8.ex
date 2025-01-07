@@ -49,23 +49,10 @@ defmodule SchoolKit.Attainment8 do
   average which is used in other calculations later on.
   """
 
+  alias SchoolKit.StudentRecord
   alias SchoolKit.Attainment8.Bucket1
   alias SchoolKit.Attainment8.Bucket2
   alias SchoolKit.Attainment8.Bucket3
-
-  defmodule StudentRecord do
-    defstruct [
-      :name,
-      :school,
-      :gender,
-      :pupil_premium,
-      :disadvantaged,
-      :SEND,
-      :attendance_band,
-      :ks2,
-      :subject_results
-    ]
-  end
 
   def calculate_attainment_8(%StudentRecord{subject_results: subject_results} = student_record) do
     attainment_8 =

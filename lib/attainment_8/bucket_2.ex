@@ -25,9 +25,9 @@ defmodule SchoolKit.Attainment8.Bucket2 do
       subject_3: subject_3,
       total:
         Utils.sum_bucket_grades(
-          subject_1[:grade],
-          subject_2[:grade],
-          subject_3[:grade]
+          subject_1.grade,
+          subject_2.grade,
+          subject_3.grade
         )
     }
 
