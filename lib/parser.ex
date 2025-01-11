@@ -1,4 +1,5 @@
 defmodule SchoolKit.Parser do
+  alias SchoolKit.StudentRecord
   alias SchoolKit.Parser.StudentRecordParser
   alias SchoolKit.Parser.GradeParser
 
@@ -61,7 +62,7 @@ defmodule SchoolKit.Parser do
           end
         end)
 
-      Map.put(student_data, :subject_results, subject_results)
+      %StudentRecord{student_data | subject_results: subject_results}
     end)
   end
 end

@@ -49,11 +49,12 @@ defmodule SchoolKit.Attainment8 do
   average which is used in other calculations later on.
   """
 
+  alias SchoolKit.StudentRecord
   alias SchoolKit.Attainment8.Bucket1
   alias SchoolKit.Attainment8.Bucket2
   alias SchoolKit.Attainment8.Bucket3
 
-  def calculate_attainment_8(%{subject_results: subject_results} = student_record) do
+  def calculate_attainment_8(%StudentRecord{subject_results: subject_results} = student_record) do
     attainment_8 =
       %{}
       |> Bucket1.calculate(subject_results)
@@ -61,7 +62,7 @@ defmodule SchoolKit.Attainment8 do
       |> Bucket3.calculate(subject_results)
       |> calculate_total()
 
-    Map.put(student_record, :attainment_8, attainment_8)
+    %StudentRecord{student_record | attainment_8: attainment_8}
   end
 
   def calculate_total(attainment_8) do

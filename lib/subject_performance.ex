@@ -1,13 +1,15 @@
 defmodule SchoolKit.SubjectPerformance do
   alias SchoolKit.Attainment8.NationalEstimates
+  alias SchoolKit.StudentRecord
 
   def generate_report(csv_path, cohort_year) do
     csv_path
     |> SchoolKit.Parser.from_csv()
     |> reject_no_ks2()
     # Progress 8 for each subject, for each student record
-    |> Enum.reduce(%{}, fn student_record, agg_subject_results ->
-      student_record.subject_results
+    |> Enum.reduce(%{}, fn %StudentRecord{subject_results: subject_results} = student_record,
+                           agg_subject_results ->
+      subject_results
       |> reject_invalid_subjects()
       |> Enum.reduce(agg_subject_results, fn {subject_key, grade}, acc ->
         add_to_subject_report(acc, subject_key, student_record, grade, cohort_year)
@@ -50,11 +52,23 @@ defmodule SchoolKit.SubjectPerformance do
     {subject, progress}
   end
 
-  defp add_to_subject_report(report, subject_key, student_record, grade, cohort_year) do
+  defp add_to_subject_report(
+         report,
+         subject_key,
+         %StudentRecord{
+           ks2: ks2,
+           school: school,
+           gender: gender,
+           disadvantaged: disadvantaged,
+           SEND: send
+         } = _student_record,
+         grade,
+         cohort_year
+       ) do
     national_estimates =
       NationalEstimates.get_national_estimates(
         cohort_year,
-        student_record.ks2.average_score
+        ks2.average_score
       )
 
     {subject_key, progress} = progress_8_for_subject(subject_key, grade, national_estimates)
@@ -63,10 +77,10 @@ defmodule SchoolKit.SubjectPerformance do
       attainment: grade,
       progress: progress,
       attributes: %{
-        school: student_record.school,
-        gender: student_record.gender,
-        disadvantaged: student_record.disadvantaged,
-        send: student_record[:SEND]
+        school: school,
+        gender: gender,
+        disadvantaged: disadvantaged,
+        send: send
       }
     }
 

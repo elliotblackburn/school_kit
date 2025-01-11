@@ -1,6 +1,10 @@
 defmodule SchoolKit.Progress8.Bucket2 do
   alias SchoolKit.Progress8.Utils
 
+  defmodule Progress8Bucket2Result do
+    defstruct [:subject_1, :subject_2, :subject_3, :total, :progress_8]
+  end
+
   def calculate(progress_8, bucket_attainment, a8_national_estimates) do
     bucket_2_result =
       Utils.calculate_progress_8_for_three_subject_bucket(
@@ -10,7 +14,14 @@ defmodule SchoolKit.Progress8.Bucket2 do
         end
       )
 
-    Map.put(progress_8, :bucket_2, bucket_2_result)
+    %Progress8Bucket2Result{
+      subject_1: bucket_2_result.subject_1,
+      subject_2: bucket_2_result.subject_2,
+      subject_3: bucket_2_result.subject_3,
+      total: bucket_2_result.total,
+      progress_8: bucket_2_result.progress_8
+    }
+    |> Map.put(progress_8, :bucket_2)
   end
 
   defp ebacc_progress_8_calculator(a8_national_estimates, subject_grade) do

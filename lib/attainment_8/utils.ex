@@ -1,4 +1,8 @@
 defmodule SchoolKit.Attainment8.Utils do
+  defmodule SubjectGrade do
+    defstruct [:subject_key, :grade]
+  end
+
   @doc """
   Return the higher subject between the two provided subjects.
   """
@@ -9,9 +13,9 @@ defmodule SchoolKit.Attainment8.Utils do
     # Account for nil grades by assuming 0 for the comparison.
     # Otherwise nil grades would always be considered higher.
     if (subject_1_grade || 0) >= (subject_2_grade || 0) do
-      %{subject_key: subject_1, grade: subject_1_grade}
+      %SubjectGrade{subject_key: subject_1, grade: subject_1_grade}
     else
-      %{subject_key: subject_2, grade: subject_2_grade}
+      %SubjectGrade{subject_key: subject_2, grade: subject_2_grade}
     end
   end
 
@@ -53,10 +57,10 @@ defmodule SchoolKit.Attainment8.Utils do
       student_record
       |> Map.to_list()
       |> filter_subjects(included_subjects)
-      |> Enum.map(&create_subject_grade_map/1)
+      |> Enum.map(&create_subject_grade_struct/1)
       |> sort_subject_grade_list()
 
-    empty_grade = create_subject_grade_map({:empty, 0})
+    empty_grade = create_subject_grade_struct({:empty, 0})
 
     case sorted_grades do
       [subject_1, subject_2, subject_3 | _] -> {subject_1, subject_2, subject_3}
@@ -70,10 +74,10 @@ defmodule SchoolKit.Attainment8.Utils do
     do: Enum.filter(all_subjects, fn {key, _value} -> key in allowed_subjects end)
 
   defp sort_subject_grade_list(subject_grade_list),
-    do: Enum.sort(subject_grade_list, &(&1[:grade] >= &2[:grade]))
+    do: Enum.sort(subject_grade_list, &(&1.grade >= &2.grade))
 
-  defp create_subject_grade_map({subject_key, subject_grade}) do
-    %{
+  defp create_subject_grade_struct({subject_key, subject_grade}) do
+    %SubjectGrade{
       subject_key: subject_key,
       grade: subject_grade
     }
